@@ -1,0 +1,278 @@
+{
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/main.py": {
+    "mtime": 1778039615.0538414,
+    "hash": "ebf4341e89c8a1c8a192f125daf244ec"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/postcss.config.js": {
+    "mtime": 1778039615.05274,
+    "hash": "ef3ba2a81ba19f8ea5ddf625521e96f0"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/tailwind.config.js": {
+    "mtime": 1778042999.297004,
+    "hash": "8fa3e35f0a7e3a2aa726d22dabd27c53"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/vite.config.ts": {
+    "mtime": 1778039615.0537584,
+    "hash": "d86461b85ca9311f4ae3a7ca8eb93af5"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/App.vue": {
+    "mtime": 1778039615.05274,
+    "hash": "8af37b4ca96906787c0ad30c2195a7e1"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/main.ts": {
+    "mtime": 1778039615.05274,
+    "hash": "51c66301a6fb88c0e180aea2206e0de0"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/views/ConfirmView.vue": {
+    "mtime": 1778039615.05274,
+    "hash": "72a3453ae681c039931ae82248a15b9d"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/views/HomeView.vue": {
+    "mtime": 1778039615.05274,
+    "hash": "05c7451af282be5f7430729074ea778c"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/views/AdminArticlesView.vue": {
+    "mtime": 1778039615.05274,
+    "hash": "cdcaabb1220765f49da184c64a71e7d6"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/views/UnsubscribeView.vue": {
+    "mtime": 1778039615.05274,
+    "hash": "a4b2e8b4e6fa1efcd94e318c7cb328af"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/views/AdminArticleEditView.vue": {
+    "mtime": 1778043076.5092418,
+    "hash": "404f7d2fb5d07c7118662735d853ab4b"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/views/ArticleView.vue": {
+    "mtime": 1778039615.05274,
+    "hash": "fd1245d74493afb817afbe7a84c64b56"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/views/AdminLoginView.vue": {
+    "mtime": 1778039615.05274,
+    "hash": "19a2df50778d34d85d2b102926b8e691"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/stores/admin.ts": {
+    "mtime": 1778039615.05274,
+    "hash": "e69c2ebd77922593ffc0dbe8ea451ef6"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/composables/useApi.ts": {
+    "mtime": 1778039615.05274,
+    "hash": "d325ecc72e9de8df51727d59c9d7ce38"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/composables/useAdminApi.ts": {
+    "mtime": 1778040546.6164448,
+    "hash": "118ca518f56d4bf2549af539e4260953"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/composables/useTipTap.ts": {
+    "mtime": 1778039615.05274,
+    "hash": "11e4527aa1b0386ad5e60485f24171c6"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/components/TipTapEditor.vue": {
+    "mtime": 1778043034.6006937,
+    "hash": "e522517fa59856c5b93dce994ceabc73"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/components/AdminLayout.vue": {
+    "mtime": 1778039615.05274,
+    "hash": "19afbfd373f95f4e1bf0f084f67e24b1"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/components/NewsletterForm.vue": {
+    "mtime": 1778039615.05274,
+    "hash": "a80b367e3e94b0d212545b09e3cf1f32"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/components/TipTapRenderer.vue": {
+    "mtime": 1778039615.05274,
+    "hash": "935201db28be100a1ca53b2db529ec11"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/src/router/index.ts": {
+    "mtime": 1778039615.05274,
+    "hash": "c9a18259c6f9b426e05086777f5712fa"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/database.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "d3207a1cb6e2e65aec09e838309a7644"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/main.py": {
+    "mtime": 1778043605.910411,
+    "hash": "04699173073b1166272bcdbac41487cd"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/config.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "d664b747f516ce35ecc34dbf978b7f74"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/dependencies.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "4c415bf684a0f01789546f11d4c31db6"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/__init__.py": {
+    "mtime": 1778039615.0512283,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/schemas.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "38ccec60eecdf007c5918e3593fd54d3"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/models/newsletter_send.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "eb3bbcef11e94122c5532b70781f92f0"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/models/article.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "d61ea3e9de6331c3d9c724b5282631d7"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/models/user.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "10275bdb770d064187939c16139bba26"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/models/__init__.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "d7415ac9e3a6d539a3edc0bd371f30c6"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/models/subscriber.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "d9e055163423fc394a4a3cca7fed3547"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/routers/subscribers.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "3cbd05b1ed7ef1134542f7fb35971f5e"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/routers/articles.py": {
+    "mtime": 1778040524.1921062,
+    "hash": "62ba153a2cdab702b18f0e6153134af0"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/routers/__init__.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "47439d422f62c1cdbf31b52645c10c87"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/services/email_service.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "ec1fd3e0083d49701698a0d3c9d28c7f"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/services/seed_service.py": {
+    "mtime": 1778043592.3974369,
+    "hash": "564e98b424f1e829709cd38065900d71"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/services/content_service.py": {
+    "mtime": 1778043706.364265,
+    "hash": "0a1595891b7a0386f003fc500f4c9422"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/services/subscriber_service.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "85c866b7d695dc0ab82bd087e6c43059"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/services/article_service.py": {
+    "mtime": 1778043735.0322375,
+    "hash": "81027ea892dea099f33872af343b5679"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/services/tiptap_renderer.py": {
+    "mtime": 1778043765.0362153,
+    "hash": "405a989c4d3f79744fc7a7ef61c968f8"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/services/newsletter_service.py": {
+    "mtime": 1778043782.2422051,
+    "hash": "536a86408517ed6d560b5c21f7a7fd70"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/app/services/__init__.py": {
+    "mtime": 1778039615.0514019,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/alembic/env.py": {
+    "mtime": 1778039615.0512283,
+    "hash": "bd74a247ffbeeaa4757c4b6006373ce0"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/alembic/versions/001_initial_migration.py": {
+    "mtime": 1778039615.0512283,
+    "hash": "b19eea897fbf14bad8261bce3bd21afd"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/tests/conftest.py": {
+    "mtime": 1778039615.1045313,
+    "hash": "6d64ff2593fc2cf279d5cc439c5bbdc5"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/tests/test_articles.py": {
+    "mtime": 1778040614.30544,
+    "hash": "35d8b298270075722b7c345ea593a98a"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/tests/test_auth.py": {
+    "mtime": 1778040630.2746692,
+    "hash": "3ea3e69666bcaff100aba4abd41ef5f3"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/tests/__init__.py": {
+    "mtime": 1778039615.1045313,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/tests/test_subscribers.py": {
+    "mtime": 1778039615.1045313,
+    "hash": "6f117017d82579aafce82a71009d2b01"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/slack_message.md": {
+    "mtime": 1778039615.1045313,
+    "hash": "d350322186b3df254c563eb1daca55d9"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/docker-compose.dev.yml": {
+    "mtime": 1778039615.0518718,
+    "hash": "4a91ef3b2c31e61c8145eb045bd48e39"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/docker-compose.prod.yml": {
+    "mtime": 1778039615.0518718,
+    "hash": "06f865233e1cef06d992b2af679355ec"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/README.md": {
+    "mtime": 1778039615.051093,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/AGENTS.md": {
+    "mtime": 1778039615.051093,
+    "hash": "5146f42702ccff2705a9e280b73198c2"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/frontend/index.html": {
+    "mtime": 1778039615.0518718,
+    "hash": "48b2b0d6c22723a36efb35cc4aef11d2"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/config.yaml": {
+    "mtime": 1778039615.1045313,
+    "hash": "eccd22949cfef92f24b5b37334ba2180"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/changes/archive/2025-05-06-blog-newsletter-platform/proposal.md": {
+    "mtime": 1778039615.1034408,
+    "hash": "479139a9c7c3f52acb970aa0d38fb9ed"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/changes/archive/2025-05-06-blog-newsletter-platform/design.md": {
+    "mtime": 1778039615.1034408,
+    "hash": "94429bcaf7d97a426a8b863a505e5998"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/changes/archive/2025-05-06-blog-newsletter-platform/tasks.md": {
+    "mtime": 1778039615.1044943,
+    "hash": "de985a083b676e6ee21f9bc99bd2761e"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/changes/archive/2025-05-06-blog-newsletter-platform/specs/subscriber-management/spec.md": {
+    "mtime": 1778039615.104426,
+    "hash": "bdf8f02f68758499102a87eaf8ee50ac"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/changes/archive/2025-05-06-blog-newsletter-platform/specs/article-management/spec.md": {
+    "mtime": 1778039615.1034408,
+    "hash": "fe5af24b5137ddc176f0b742db4b6d8c"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/changes/archive/2025-05-06-blog-newsletter-platform/specs/newsletter-delivery/spec.md": {
+    "mtime": 1778039615.104426,
+    "hash": "8e37851b593252f1c68d7bba45ae03ad"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/changes/archive/2025-05-06-blog-newsletter-platform/specs/admin-authentication/spec.md": {
+    "mtime": 1778039615.1034408,
+    "hash": "7022f16765ee69f3c58fb53a46ad5974"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/specs/subscriber-management/spec.md": {
+    "mtime": 1778044281.9645286,
+    "hash": "bdf8f02f68758499102a87eaf8ee50ac"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/specs/article-management/spec.md": {
+    "mtime": 1778044281.9626226,
+    "hash": "fe5af24b5137ddc176f0b742db4b6d8c"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/specs/newsletter-delivery/spec.md": {
+    "mtime": 1778044281.9638913,
+    "hash": "8e37851b593252f1c68d7bba45ae03ad"
+  },
+  "/home/paulo/Desktop/paulo/opencode/bg_assistant/openspec/specs/admin-authentication/spec.md": {
+    "mtime": 1778044281.9611392,
+    "hash": "7022f16765ee69f3c58fb53a46ad5974"
+  }
+}

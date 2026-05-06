@@ -1,0 +1,12 @@
+{
+  "issue_tracker": {
+    "type": "github",
+    "repo": "paulogarcia79/opencode_experiment"
+  },
+  "triage_labels": {
+    "needs_triage": "needs-triage",
+    "ready": "ready",
+    "in_progress": "in-progress",
+    "done": "done"
+  }
+}

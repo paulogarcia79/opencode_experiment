@@ -1,0 +1,54 @@
+schema: spec-driven
+
+context: |
+  # Tech Stack
+  - Backend: Python, FastAPI, SQLModel, PostgreSQL.
+  - Frontend: Vue.js 3 (Composition API), TypeScript, Tailwind CSS, Vite, Vitest.
+  - Infrastructure: Docker, Docker Compose, Nginx (Reverse Proxy/API Gateway).
+  - Methodology: Spec-Driven Development (SDD), Test-Driven Development (TDD).
+  - Environment: Linux (Debian/Ubuntu/Fedora based).
+
+  # Domain Knowledge
+  - Application: A platform combining a content Blog and a Newsletter subscription system.
+  - Core Entities:
+    1. Article (Blog posts with title, content, publication date, status).
+    2. Subscriber (Users subscribed to the newsletter with email, active status).
+
+  # Design System & UI Conventions
+  - Aesthetic: Dark tech, OLED-optimized, modern and professional. Deep dark surfaces with subtle glows.
+  - Visuals: Background `#0F0F23` (deep dark), card surfaces `bg-white/[0.02]` with `border-white/5` or `border-white/10`, subtle purple glow accents, backdrop blur for floating navbars.
+  - Typography: Space Grotesk for headings (tech/modern feel), Inter for body text, JetBrains Mono for code and metadata.
+  - Colors: Purple primary `#7C3AED` (buttons, active states, links), Rose accent `#F43F5E` (CTAs, newsletter toggle), Emerald `#10B981` for success states, Slate text palette for hierarchy.
+  - Effects: Smooth transitions (150-300ms), hover glow on cards (`bg-primary-600/5`), focus-visible with `outline-primary-600`, custom dark scrollbar, `::selection` with purple tint.
+  - Icons: SVG only (Heroicons/Lucide style), never emojis. Consistent 24x24 viewBox.
+  - Reference: See `design-system/tech-&-games-blog/MASTER.md` for full specification.
+
+  # Development Conventions
+  - TDD is strictly required: Write tests (pytest for backend, vitest for frontend) before logic.
+  - Type Safety: End-to-end typing. Backend uses SQLModel/Pydantic; Frontend uses strict TypeScript interfaces.
+
+rules:
+  domain_spec:
+    - Use SQLModel classes as the absolute single source of truth for both database tables and API data validation.
+    - Use UUIDs for primary keys.
+  
+  backend:
+    - Write tests using `pytest` and FastAPI's `TestClient` first.
+    - Keep routing (routers) separated from database logic (crud operations).
+
+  frontend:
+    - Use strict TypeScript. Avoid `any`. Define interfaces that strictly map to the OpenAPI JSON schema provided by the backend.
+    - Write unit and component tests using `Vitest` and `@vue/test-utils` before implementing the UI.
+    - Build components adhering to the dark tech design system using Tailwind. See `design-system/tech-&-games-blog/MASTER.md`.
+
+  infrastructure:
+    - Configure Nginx as the main entry point (port 80/443). All external traffic hits Nginx first.
+    - Implement a dual Docker Compose setup (or profiles):
+      1. 'dev' mode: Nginx routes `/` to Vite dev server (for HMR) and `/api` to FastAPI.
+      2. 'prod' mode: Nginx serves static built Vue files on `/` and routes `/api` to FastAPI.
+    - Ensure PostgreSQL data persists across container restarts using Docker volumes.
+  proposal:
+    - Keep proposals under 500 words
+    - Always include a "Non-goals" section
+  tasks:
+    - Break tasks into chunks of max 2 hours

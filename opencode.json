@@ -1,0 +1,24 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": {
+    "paths": [
+      ".opencode/skills"
+    ]
+  },
+  "command": {
+    "graphify": {
+      "template": "Build a queryable knowledge graph from code, docs, papers, or images. Load the graphify skill and execute.",
+      "description": "Knowledge graph builder via graphifyy"
+    }
+  },
+  "watcher": {
+    "ignore": [
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/.venv/**",
+      "*.log",
+      "*.lock"
+    ]
+  },
+  "plugin": ["ecc-universal"]
+}

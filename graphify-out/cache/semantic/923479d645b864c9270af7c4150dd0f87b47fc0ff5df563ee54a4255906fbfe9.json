@@ -1,0 +1,1 @@
+{"nodes": [], "edges": [], "hyperedges": [{"id": "core_domain_models", "label": "Core domain models", "nodes": ["user_user", "article_article", "subscriber_subscriber", "newsletter_send_newslettersend"], "relation": "form", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "app/models/__init__.py"}]}
