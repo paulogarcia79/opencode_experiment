@@ -229,14 +229,8 @@ async function insertUploadedImage(file: File) {
   if (!editor.value) return
 
   // Insert loading placeholder
-  const placeholderAttrs = {
-    src: '',
-    alt: 'Uploading...',
-    'data-placeholder': 'true',
-    class: 'image-loading-placeholder',
-  }
-
-  editor.value.chain().focus().setImage(placeholderAttrs).run()
+  // Note: TipTap Image only preserves src, alt, title — use empty src as placeholder ID
+  editor.value.chain().focus().setImage({ src: '', alt: 'Uploading...' }).run()
 
   try {
     const result = await uploadImage(file)
@@ -245,11 +239,10 @@ async function insertUploadedImage(file: File) {
     editor.value.chain().focus().command(({ tr, dispatch }) => {
       if (!dispatch) return false
 
-      // Use current editor state (not the stale captured one)
       const currentState = editor.value!.state
       let placeholderPos = -1
       currentState.doc.descendants((node, pos) => {
-        if (node.type.name === 'image' && node.attrs['data-placeholder'] === 'true') {
+        if (node.type.name === 'image' && node.attrs.src === '') {
           placeholderPos = pos
           return false
         }
@@ -275,7 +268,7 @@ async function insertUploadedImage(file: File) {
       const currentState = editor.value!.state
       let placeholderPos = -1
       currentState.doc.descendants((node, pos) => {
-        if (node.type.name === 'image' && node.attrs['data-placeholder'] === 'true') {
+        if (node.type.name === 'image' && node.attrs.src === '') {
           placeholderPos = pos
           return false
         }
@@ -333,14 +326,6 @@ async function insertUploadedImage(file: File) {
   height: auto;
   display: block;
   border-radius: 0.5rem;
-}
-.ProseMirror img.image-loading-placeholder {
-  min-height: 100px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px dashed rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .ProseMirror .ProseMirror-selectednode img {
   outline: 2px solid #a78bfa;
