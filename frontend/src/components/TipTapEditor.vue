@@ -228,9 +228,6 @@ function getImageFileFromDataTransfer(dataTransfer: DataTransfer): File | null {
 async function insertUploadedImage(file: File) {
   if (!editor.value) return
 
-  const view = editor.value.view
-  const { state } = view
-
   // Insert loading placeholder
   const placeholderAttrs = {
     src: '',
@@ -248,9 +245,10 @@ async function insertUploadedImage(file: File) {
     editor.value.chain().focus().command(({ tr, dispatch }) => {
       if (!dispatch) return false
 
-      // Find the placeholder node
+      // Use current editor state (not the stale captured one)
+      const currentState = editor.value!.state
       let placeholderPos = -1
-      state.doc.descendants((node, pos) => {
+      currentState.doc.descendants((node, pos) => {
         if (node.type.name === 'image' && node.attrs['data-placeholder'] === 'true') {
           placeholderPos = pos
           return false
@@ -258,7 +256,7 @@ async function insertUploadedImage(file: File) {
       })
 
       if (placeholderPos !== -1) {
-        const imageNode = state.schema.nodes.image.create({
+        const imageNode = currentState.schema.nodes.image.create({
           src: result.url,
           alt: result.original_name,
           title: result.original_name,
@@ -274,8 +272,9 @@ async function insertUploadedImage(file: File) {
     editor.value.chain().focus().command(({ tr, dispatch }) => {
       if (!dispatch) return false
 
+      const currentState = editor.value!.state
       let placeholderPos = -1
-      state.doc.descendants((node, pos) => {
+      currentState.doc.descendants((node, pos) => {
         if (node.type.name === 'image' && node.attrs['data-placeholder'] === 'true') {
           placeholderPos = pos
           return false
