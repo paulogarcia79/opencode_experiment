@@ -1,4 +1,16 @@
 from typing import Any
+from app.config import settings
+
+def _resolve_image_url(src: str) -> str:
+    """Prepend APP_BASE_URL to relative image URLs. Leave absolute URLs unchanged."""
+    if not src:
+        return src
+    if src.startswith(('http://', 'https://')):
+        return src
+    if src.startswith('/'):
+        base_url = settings.APP_BASE_URL.rstrip('/')
+        return f"{base_url}{src}"
+    return src
 
 def render_tiptap_node_to_html(node: Any) -> str:
     """Render a single TipTap node to HTML string."""
@@ -24,6 +36,16 @@ def render_tiptap_node_to_html(node: Any) -> str:
                 href = mark.get("attrs", {}).get("href", "#")
                 html = f'<a href="{href}">{html}</a>'
         return html
+    
+    # Image nodes
+    if node_type == "image":
+        src = _resolve_image_url(attrs.get("src", ""))
+        alt = attrs.get("alt", "")
+        title = attrs.get("title", "")
+        title_attr = f' title="{title}"' if title else ""
+        # Email-safe inline styles for images
+        style = 'max-width:100%;height:auto;display:block;'
+        return f'<img src="{src}" alt="{alt}"{title_attr} style="{style}" />'
     
     # Container nodes
     children_html = "".join(render_tiptap_node_to_html(child) for child in content)
