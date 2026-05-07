@@ -104,7 +104,12 @@
     </div>
 
     <!-- Editor Content -->
-    <editor-content :editor="editor" class="prose prose-invert prose-slate max-w-none p-5 min-h-[350px] bg-transparent" />
+    <editor-content
+      :editor="editor"
+      class="prose prose-invert prose-slate max-w-none p-5 min-h-[350px] bg-transparent"
+      @drop="handleDrop"
+      @paste="handlePaste"
+    />
   </div>
 </template>
 
@@ -112,6 +117,8 @@
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
+import Image from '@tiptap/extension-image'
+import { uploadImage } from '@/composables/useImageUpload'
 
 const props = defineProps<{
   modelValue: any
@@ -131,6 +138,10 @@ const editor = useEditor({
     Link.configure({
       openOnClick: false,
     }),
+    Image.configure({
+      inline: true,
+      allowBase64: false,
+    }),
   ],
   content: props.modelValue,
   onUpdate: ({ editor }) => {
@@ -142,6 +153,109 @@ function setLink() {
   const url = window.prompt('Enter URL')
   if (url && editor.value) {
     editor.value.chain().focus().setLink({ href: url }).run()
+  }
+}
+
+function getImageFileFromDataTransfer(dataTransfer: DataTransfer): File | null {
+  if (dataTransfer.files && dataTransfer.files.length > 0) {
+    const file = dataTransfer.files[0]
+    if (file.type.startsWith('image/')) {
+      return file
+    }
+  }
+  return null
+}
+
+async function insertUploadedImage(file: File) {
+  if (!editor.value) return
+
+  const view = editor.value.view
+  const { state } = view
+  const { selection } = state
+
+  // Insert loading placeholder
+  const placeholderAttrs = {
+    src: '',
+    alt: 'Uploading...',
+    'data-placeholder': 'true',
+    class: 'image-loading-placeholder',
+  }
+
+  editor.value.chain().focus().setImage(placeholderAttrs).run()
+
+  try {
+    const result = await uploadImage(file)
+
+    // Replace placeholder with actual image
+    editor.value.chain().focus().command(({ tr, dispatch }) => {
+      if (!dispatch) return false
+
+      // Find the placeholder node
+      let placeholderPos = -1
+      state.doc.descendants((node, pos) => {
+        if (node.type.name === 'image' && node.attrs['data-placeholder'] === 'true') {
+          placeholderPos = pos
+          return false
+        }
+      })
+
+      if (placeholderPos !== -1) {
+        const imageNode = state.schema.nodes.image.create({
+          src: result.url,
+          alt: result.original_name,
+          title: result.original_name,
+        })
+        tr.replaceWith(placeholderPos, placeholderPos + 1, imageNode)
+        dispatch(tr)
+        return true
+      }
+      return false
+    }).run()
+  } catch (error) {
+    // Remove placeholder on error
+    editor.value.chain().focus().command(({ tr, dispatch }) => {
+      if (!dispatch) return false
+
+      let placeholderPos = -1
+      state.doc.descendants((node, pos) => {
+        if (node.type.name === 'image' && node.attrs['data-placeholder'] === 'true') {
+          placeholderPos = pos
+          return false
+        }
+      })
+
+      if (placeholderPos !== -1) {
+        tr.delete(placeholderPos, placeholderPos + 1)
+        dispatch(tr)
+        return true
+      }
+      return false
+    }).run()
+
+    console.error('Image upload failed:', error)
+  }
+}
+
+function handleDrop(event: DragEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+
+  if (!event.dataTransfer) return
+
+  const imageFile = getImageFileFromDataTransfer(event.dataTransfer)
+  if (imageFile) {
+    insertUploadedImage(imageFile)
+  }
+}
+
+function handlePaste(event: ClipboardEvent) {
+  if (!event.clipboardData) return
+
+  const imageFile = getImageFileFromDataTransfer(event.clipboardData)
+  if (imageFile) {
+    event.preventDefault()
+    event.stopPropagation()
+    insertUploadedImage(imageFile)
   }
 }
 </script>
@@ -177,5 +291,25 @@ function setLink() {
 }
 .ProseMirror a {
   color: #a78bfa !important;
+}
+
+/* Image styles */
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 0.5rem;
+}
+.ProseMirror img.image-loading-placeholder {
+  min-height: 100px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ProseMirror .ProseMirror-selectednode img {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
 }
 </style>
