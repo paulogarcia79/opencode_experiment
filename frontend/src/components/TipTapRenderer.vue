@@ -48,4 +48,10 @@ const htmlContent = computed(() => renderTipTapJSON(props.content))
 .prose-invert :deep(hr) {
   border-color: rgba(255, 255, 255, 0.1);
 }
+.prose-invert :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 1.5rem 0;
+}
 </style>

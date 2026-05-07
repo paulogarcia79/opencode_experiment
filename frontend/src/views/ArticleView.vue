@@ -63,7 +63,7 @@
       </header>
 
       <!-- Article Body -->
-      <div class="prose prose-invert prose-slate max-w-none">
+      <div class="prose prose-invert prose-slate max-w-none article-content">
         <TipTapRenderer :content="article.content" />
       </div>
 
@@ -128,3 +128,12 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.article-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 1.5rem 0;
+}
+</style>
