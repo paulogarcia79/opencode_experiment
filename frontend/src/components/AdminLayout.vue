@@ -16,6 +16,22 @@
             </div>
             Admin
           </RouterLink>
+          <div class="hidden sm:flex items-center gap-1">
+            <RouterLink
+              to="/admin"
+              exact-active-class="text-primary-400"
+              class="text-sm text-slate-500 hover:text-white transition-colors duration-200 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-white/5"
+            >
+              Articles
+            </RouterLink>
+            <RouterLink
+              to="/admin/media"
+              exact-active-class="text-primary-400"
+              class="text-sm text-slate-500 hover:text-white transition-colors duration-200 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-white/5"
+            >
+              Media
+            </RouterLink>
+          </div>
           <RouterLink
             to="/"
             class="text-sm text-slate-500 hover:text-primary-400 transition-colors duration-200 cursor-pointer flex items-center gap-1"

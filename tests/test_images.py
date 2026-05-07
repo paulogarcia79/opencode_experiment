@@ -1,4 +1,5 @@
 import io
+import uuid
 from fastapi.testclient import TestClient
 from app.config import settings
 from app.models.image_asset import ImageAsset
@@ -92,3 +93,72 @@ class TestImageUpload:
                 headers=AUTH_HEADER,
             )
             assert response.status_code == 200, f"Failed for {filename}: {response.text}"
+
+
+class TestImageList:
+    def test_list_images(self, client: TestClient):
+        # Upload a couple of images first
+        for i in range(3):
+            client.post(
+                "/api/admin/images",
+                files={"file": (f"test{i}.png", io.BytesIO(b"\x89PNG\r\n\x1a\n fake"), "image/png")},
+                headers=AUTH_HEADER,
+            )
+        
+        response = client.get("/api/admin/images", headers=AUTH_HEADER)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 3
+        assert data[0]["original_name"].startswith("test")
+        assert "id" in data[0]
+        assert "url" in data[0]
+        assert "created_at" in data[0]
+
+    def test_list_images_pagination(self, client: TestClient):
+        # Upload 5 images
+        for i in range(5):
+            client.post(
+                "/api/admin/images",
+                files={"file": (f"test{i}.png", io.BytesIO(b"\x89PNG\r\n\x1a\n fake"), "image/png")},
+                headers=AUTH_HEADER,
+            )
+        
+        response = client.get("/api/admin/images?limit=2", headers=AUTH_HEADER)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_images_unauthorized(self, client: TestClient):
+        response = client.get("/api/admin/images")
+        assert response.status_code == 401
+
+
+class TestImageDelete:
+    def test_delete_image(self, client: TestClient, session):
+        # Upload an image
+        upload_response = client.post(
+            "/api/admin/images",
+            files={"file": ("test.png", io.BytesIO(b"\x89PNG\r\n\x1a\n fake"), "image/png")},
+            headers=AUTH_HEADER,
+        )
+        assert upload_response.status_code == 200
+        image_id = upload_response.json()["id"]
+
+        # Delete it
+        response = client.delete(f"/api/admin/images/{image_id}", headers=AUTH_HEADER)
+        assert response.status_code == 204
+
+        # Verify it's gone
+        image = session.get(ImageAsset, uuid.UUID(image_id))
+        assert image is None
+
+    def test_delete_image_not_found(self, client: TestClient):
+        response = client.delete(
+            f"/api/admin/images/{uuid.uuid4()}",
+            headers=AUTH_HEADER,
+        )
+        assert response.status_code == 404
+
+    def test_delete_image_unauthorized(self, client: TestClient):
+        response = client.delete(f"/api/admin/images/{uuid.uuid4()}")
+        assert response.status_code == 401

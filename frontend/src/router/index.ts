@@ -8,6 +8,7 @@ import AdminLoginView from '@/views/AdminLoginView.vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import AdminArticlesView from '@/views/AdminArticlesView.vue'
 import AdminArticleEditView from '@/views/AdminArticleEditView.vue'
+import AdminMediaView from '@/views/AdminMediaView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -57,6 +58,11 @@ const router = createRouter({
           path: 'articles/:id/edit',
           name: 'admin-article-edit',
           component: AdminArticleEditView,
+        },
+        {
+          path: 'media',
+          name: 'admin-media',
+          component: AdminMediaView,
         },
       ],
     },

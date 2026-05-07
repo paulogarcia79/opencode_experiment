@@ -1,6 +1,7 @@
 import uuid
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from sqlmodel import Session
+from sqlmodel import Session, select
 from app.database import get_session
 from app.dependencies import require_admin
 from app.models.image_asset import ImageAsset
@@ -71,3 +72,48 @@ async def upload_image_endpoint(
         "size_bytes": image_asset.size_bytes,
         "mime_type": image_asset.mime_type,
     }
+
+@router.get("/api/admin/images", response_model=list[dict], dependencies=[Depends(require_admin)])
+def list_images_endpoint(
+    skip: int = 0,
+    limit: int = 50,
+    session: Session = Depends(get_session),
+):
+    """List uploaded images with pagination."""
+    images = session.exec(
+        select(ImageAsset)
+        .order_by(ImageAsset.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    ).all()
+    
+    return [
+        {
+            "id": str(image.id),
+            "url": image.url,
+            "original_name": image.original_name,
+            "size_bytes": image.size_bytes,
+            "mime_type": image.mime_type,
+            "created_at": image.created_at.isoformat() if image.created_at else None,
+        }
+        for image in images
+    ]
+
+@router.delete("/api/admin/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+def delete_image_endpoint(
+    image_id: uuid.UUID,
+    session: Session = Depends(get_session),
+):
+    """Delete an image and remove it from storage."""
+    image = session.get(ImageAsset, image_id)
+    if not image:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+    
+    # Remove from storage
+    storage.delete(image.storage_path)
+    
+    # Remove from database
+    session.delete(image)
+    session.commit()
+    
+    return None

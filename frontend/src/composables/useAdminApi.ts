@@ -46,3 +46,17 @@ export async function deleteArticle(id: string) {
   })
   if (!res.ok) throw new Error('Failed to delete article')
 }
+
+export async function fetchAdminImages() {
+  const res = await fetch(`${API_BASE}/api/admin/images`, { headers: getAuthHeaders() })
+  if (!res.ok) throw new Error('Failed to fetch images')
+  return res.json()
+}
+
+export async function deleteImage(id: string) {
+  const res = await fetch(`${API_BASE}/api/admin/images/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to delete image')
+}
