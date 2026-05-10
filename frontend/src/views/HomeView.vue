@@ -192,7 +192,20 @@ function formatDate(dateStr: string): string {
 }
 
 onMounted(async () => {
-  useHead({})
+  const baseUrl = window.location.origin
+  useHead({
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'Tech & Games Blog',
+      url: baseUrl,
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: `${baseUrl}/search?q={search_term_string}`,
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  })
   try {
     articles.value = await fetchArticles()
   } catch (e: any) {
