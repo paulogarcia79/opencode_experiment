@@ -166,6 +166,17 @@ onMounted(async () => {
       ogUrl: `${baseUrl}/articles/${article.value.slug}`,
       twitterTitle: article.value.title,
       twitterDescription: article.value.description || undefined,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: article.value.title,
+        description: article.value.description || undefined,
+        datePublished: article.value.published_at,
+        dateModified: article.value.updated_at,
+        author: { '@type': 'Organization', name: 'Tech & Games Blog' },
+        publisher: { '@type': 'Organization', name: 'Tech & Games Blog' },
+        mainEntityOfPage: `${baseUrl}/articles/${article.value.slug}`,
+      },
     })
   } catch (e: any) {
     error.value = e.message
