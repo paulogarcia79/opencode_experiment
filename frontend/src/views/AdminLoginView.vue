@@ -20,25 +20,54 @@
           Admin Login
         </h1>
         <p class="text-sm text-slate-500 text-center mb-8">
-          Enter your API token to access the dashboard
+          Enter your credentials to access the dashboard
         </p>
 
-        <form @submit.prevent="login" class="space-y-5">
+        <!-- Error State -->
+        <div v-if="error" class="mb-6 border border-red-500/20 bg-red-500/10 rounded-lg p-4 flex items-start gap-3">
+          <svg class="h-5 w-5 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           <div>
-            <label class="block text-sm font-medium text-slate-400 mb-2">API Token</label>
+            <p class="text-sm font-medium text-red-300">Login Failed</p>
+            <p class="text-sm text-red-400/80 mt-0.5">{{ error }}</p>
+          </div>
+        </div>
+
+        <form @submit.prevent="handleLogin" class="space-y-5">
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-2">Email</label>
             <input
-              v-model="token"
+              v-model="email"
+              type="email"
+              required
+              class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200"
+              placeholder="admin@example.com"
+              :disabled="loading"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-2">Password</label>
+            <input
+              v-model="password"
               type="password"
               required
-              class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white text-sm font-mono placeholder-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200"
-              placeholder="Bearer token"
+              class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200"
+              placeholder="••••••••"
+              :disabled="loading"
             />
           </div>
           <button
             type="submit"
-            class="w-full px-4 py-3 bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-lg shadow-primary-600/20 hover:shadow-primary-500/30 cursor-pointer"
+            :disabled="loading"
+            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-lg shadow-primary-600/20 hover:shadow-primary-500/30 cursor-pointer"
           >
-            Login
+            <svg v-if="loading" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <span v-if="loading">Signing in...</span>
+            <span v-else>Login</span>
           </button>
         </form>
 
@@ -59,13 +88,30 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminStore } from '@/stores/admin'
+import { login } from '@/composables/useAdminApi'
 
-const token = ref('')
+const email = ref('')
+const password = ref('')
+const loading = ref(false)
+const error = ref('')
+
 const router = useRouter()
 const store = useAdminStore()
 
-function login() {
-  store.setToken(token.value)
-  router.push('/admin')
+async function handleLogin() {
+  if (loading.value) return
+  
+  loading.value = true
+  error.value = ''
+  
+  try {
+    const data = await login(email.value, password.value)
+    store.setToken(data.token)
+    router.push('/admin')
+  } catch (e: any) {
+    error.value = e.message || 'Something went wrong'
+  } finally {
+    loading.value = false
+  }
 }
 </script>

@@ -7,6 +7,19 @@ export function getAuthHeaders(): Record<string, string> {
   return store.token ? { Authorization: `Bearer ${store.token}` } : {}
 }
 
+export async function login(email: string, password: string) {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Login failed')
+  }
+  return res.json()
+}
+
 export async function fetchAdminArticles() {
   const res = await fetch(`${API_BASE}/api/admin/articles`, { headers: getAuthHeaders() })
   if (!res.ok) throw new Error('Failed to fetch articles')

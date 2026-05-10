@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import {
   getAuthHeaders,
+  login,
   fetchAdminArticles,
   fetchAdminArticle,
   createArticle,
@@ -11,6 +12,42 @@ import {
   deleteImage,
 } from '@/composables/useAdminApi'
 import { useAdminStore } from '@/stores/admin'
+
+describe('login', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('posts to login endpoint with email and password on success', async () => {
+    const mockData = { token: 'jwt-token', type: 'bearer' }
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    )
+
+    const result = await login('admin@example.com', 'password')
+
+    expect(result).toEqual(mockData)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/auth/login',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ email: 'admin@example.com', password: 'password' }),
+      })
+    )
+    fetchSpy.mockRestore()
+  })
+
+  it('throws extracted error detail on error response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'Incorrect email or password' }), { status: 401 })
+    )
+
+    await expect(login('wrong@example.com', 'pass')).rejects.toThrow('Incorrect email or password')
+    vi.restoreAllMocks()
+  })
+})
 
 describe('getAuthHeaders', () => {
   beforeEach(() => {
