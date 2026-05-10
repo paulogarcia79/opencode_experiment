@@ -97,6 +97,20 @@
           <span v-if="submitting">{{ isEditing ? 'Updating...' : 'Creating...' }}</span>
           <span v-else>{{ isEditing ? 'Update Article' : 'Create Article' }}</span>
         </button>
+        <button
+          v-if="isEditing"
+          type="button"
+          @click="handleSendPreview"
+          :disabled="previewing"
+          class="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg border border-white/10 transition-all duration-200 cursor-pointer"
+        >
+          <svg v-if="previewing" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span v-if="previewing">Sending...</span>
+          <span v-else>Send Preview</span>
+        </button>
         <RouterLink
           to="/admin"
           class="px-6 py-2.5 border border-white/10 text-sm font-medium text-slate-400 rounded-lg hover:bg-white/5 hover:text-white transition-all duration-200 cursor-pointer"
@@ -177,7 +191,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TipTapEditor from '@/components/TipTapEditor.vue'
 import TagInput from '@/components/TagInput.vue'
-import { createArticle, updateArticle, fetchAdminArticle } from '@/composables/useAdminApi'
+import { createArticle, updateArticle, fetchAdminArticle, sendPreviewEmail } from '@/composables/useAdminApi'
 import { useAutoSave } from '@/composables/useAutoSave'
 
 const route = useRoute()
@@ -196,6 +210,7 @@ const form = ref({
 const state = ref<'idle' | 'success' | 'error'>('idle')
 const message = ref('')
 const submitting = ref(false)
+const previewing = ref(false)
 const editorKey = ref(0)
 const articleId = ref<string | null>(null)
 
@@ -265,6 +280,25 @@ async function handleSubmit() {
     message.value = e.message || 'Something went wrong.'
   } finally {
     submitting.value = false
+  }
+}
+
+async function handleSendPreview() {
+  if (previewing.value || !isEditing.value) return
+  
+  state.value = 'idle'
+  message.value = ''
+  previewing.value = true
+  
+  try {
+    const res = await sendPreviewEmail(route.params.id as string)
+    message.value = res.message || 'Preview sent successfully.'
+    state.value = 'success'
+  } catch (e: any) {
+    state.value = 'error'
+    message.value = e.message || 'Failed to send preview.'
+  } finally {
+    previewing.value = false
   }
 }
 </script>

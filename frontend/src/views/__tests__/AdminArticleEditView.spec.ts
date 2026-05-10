@@ -17,6 +17,7 @@ vi.mock('@/composables/useAdminApi', () => ({
   fetchAdminArticle: vi.fn(),
   createArticle: vi.fn(),
   updateArticle: vi.fn(),
+  sendPreviewEmail: vi.fn(),
 }))
 
 vi.mock('@/composables/useAutoSave', () => ({
@@ -26,7 +27,7 @@ vi.mock('@/composables/useAutoSave', () => ({
   }),
 }))
 
-import { fetchAdminArticle, createArticle, updateArticle } from '@/composables/useAdminApi'
+import { fetchAdminArticle, createArticle, updateArticle, sendPreviewEmail } from '@/composables/useAdminApi'
 import { useAutoSave } from '@/composables/useAutoSave'
 
 const RouterLink = {
@@ -151,5 +152,62 @@ describe('AdminArticleEditView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Send newsletter')
+  })
+
+  it('calls sendPreviewEmail and shows success message', async () => {
+    mockParams.id = '123'
+    vi.mocked(fetchAdminArticle).mockResolvedValue({
+      id: '123',
+      title: 'Existing',
+      description: '',
+      content: { type: 'doc', content: [] },
+      status: 'draft',
+      send_newsletter: true,
+      tags: [],
+    })
+    vi.mocked(sendPreviewEmail).mockResolvedValue({ message: 'Preview sent successfully' })
+
+    const wrapper = mount(AdminArticleEditView, {
+      global: { components: { RouterLink, TipTapEditor, TagInput } },
+    })
+    await flushPromises()
+
+    // Find and click the Send Preview button
+    const buttons = wrapper.findAll('button')
+    const previewBtn = buttons.find(btn => btn.text() === 'Send Preview')
+    expect(previewBtn).toBeDefined()
+    
+    await previewBtn!.trigger('click')
+    await flushPromises()
+
+    expect(sendPreviewEmail).toHaveBeenCalledWith('123')
+    expect(wrapper.text()).toContain('Preview sent successfully')
+  })
+
+  it('shows error state when sendPreviewEmail fails', async () => {
+    mockParams.id = '123'
+    vi.mocked(fetchAdminArticle).mockResolvedValue({
+      id: '123',
+      title: 'Existing',
+      description: '',
+      content: { type: 'doc', content: [] },
+      status: 'draft',
+      send_newsletter: true,
+      tags: [],
+    })
+    vi.mocked(sendPreviewEmail).mockRejectedValue(new Error('Network error'))
+
+    const wrapper = mount(AdminArticleEditView, {
+      global: { components: { RouterLink, TipTapEditor, TagInput } },
+    })
+    await flushPromises()
+
+    const buttons = wrapper.findAll('button')
+    const previewBtn = buttons.find(btn => btn.text() === 'Send Preview')
+    
+    await previewBtn!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Network error')
   })
 })

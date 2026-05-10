@@ -10,6 +10,7 @@ import {
   deleteArticle,
   fetchAdminImages,
   deleteImage,
+  sendPreviewEmail,
 } from '@/composables/useAdminApi'
 import { useAdminStore } from '@/stores/admin'
 
@@ -289,6 +290,41 @@ describe('deleteImage', () => {
     )
 
     await expect(deleteImage('1')).rejects.toThrow('Failed to delete image')
+    vi.restoreAllMocks()
+  })
+})
+
+describe('sendPreviewEmail', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('posts to preview-email endpoint on success', async () => {
+    const mockData = { message: 'Preview sent successfully' }
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    )
+
+    const result = await sendPreviewEmail('1')
+
+    expect(result).toEqual(mockData)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/admin/articles/1/preview-email',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.any(Object),
+      })
+    )
+    fetchSpy.mockRestore()
+  })
+
+  it('throws extracted error detail on error response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'Article not found' }), { status: 404 })
+    )
+
+    await expect(sendPreviewEmail('1')).rejects.toThrow('Article not found')
     vi.restoreAllMocks()
   })
 })

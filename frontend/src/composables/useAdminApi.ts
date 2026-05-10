@@ -73,3 +73,15 @@ export async function deleteImage(id: string) {
   })
   if (!res.ok) throw new Error('Failed to delete image')
 }
+
+export async function sendPreviewEmail(id: string) {
+  const res = await fetch(`${API_BASE}/api/admin/articles/${id}/preview-email`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Failed to send preview email')
+  }
+  return res.json()
+}

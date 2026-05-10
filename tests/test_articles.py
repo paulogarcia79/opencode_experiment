@@ -206,3 +206,22 @@ def test_robots_txt(client: TestClient, admin_token):
     assert "Disallow: /uploads/" in content
     assert "Sitemap:" in content
     assert "/sitemap.xml" in content
+
+def test_preview_email_endpoint(client: TestClient, session, admin_token):
+    from app.services.article_service import create_article
+    from unittest.mock import patch
+    
+    article = create_article(session, "Preview Test", {"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Preview content"}]}]})
+    
+    with patch('app.routers.articles.send_newsletter_email') as mock_send:
+        response = client.post(f"/api/admin/articles/{article.id}/preview-email", headers=admin_token)
+        
+    assert response.status_code == 200
+    assert response.json()["message"] == "Preview sent successfully"
+    
+    mock_send.assert_called_once()
+    args = mock_send.call_args[0]
+    assert args[0] == settings.ADMIN_EMAIL
+    assert args[1] == "Preview Test"
+    assert "Preview content" in args[2]
+    assert args[3] == "preview-mode-no-unsubscribe"

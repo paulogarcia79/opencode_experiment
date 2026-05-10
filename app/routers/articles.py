@@ -18,6 +18,8 @@ from app.services.article_service import (
 from app.services.newsletter_service import send_newsletter_for_article
 from app.services.search_service import search_articles
 from app.services.tag_service import get_or_create_tags
+from app.services.email_service import send_newsletter_email
+from app.services.tiptap_renderer import render_tiptap_to_email_html
 from app.models.tag import Tag, ArticleTag
 from app.config import settings
 
@@ -305,6 +307,17 @@ def delete_tag_endpoint(tag_id: UUID, session: Session = Depends(get_session)):
     session.delete(tag)
     session.commit()
     return None
+
+@router.post("/api/admin/articles/{article_id}/preview-email", dependencies=[Depends(require_admin)])
+def preview_email_endpoint(article_id: UUID, session: Session = Depends(get_session)):
+    article = session.get(Article, article_id)
+    if not article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+    
+    html = render_tiptap_to_email_html(article.content)
+    # Use dummy unsubscribe token for preview
+    send_newsletter_email(settings.ADMIN_EMAIL, article.title, html, "preview-mode-no-unsubscribe")
+    return {"message": "Preview sent successfully"}
 
 # Public tag endpoints
 
