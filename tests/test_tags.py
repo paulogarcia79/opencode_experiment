@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 
 
-def test_create_article_with_tags_returns_tags_in_api_response(client, session):
+def test_create_article_with_tags_returns_tags_in_api_response(client, session, admin_token):
     """POST /api/admin/articles with tag_names should include tags in response."""
     payload = {
         "title": "Tagged Article",
@@ -13,7 +13,7 @@ def test_create_article_with_tags_returns_tags_in_api_response(client, session):
     response = client.post(
         "/api/admin/articles",
         json=payload,
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
 
     print("STATUS:", response.status_code)
@@ -27,13 +27,13 @@ def test_create_article_with_tags_returns_tags_in_api_response(client, session):
     assert "tutorial" in tag_slugs
 
 
-def test_tags_are_case_insensitive(client, session):
+def test_tags_are_case_insensitive(client, session, admin_token):
     """Creating articles with 'Docker' and 'docker' should use the same tag."""
     # First article with "Docker"
     response1 = client.post(
         "/api/admin/articles",
         json={"title": "Article 1", "content": {}, "tag_names": ["Docker"]},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     assert response1.status_code == 200
     data1 = response1.json()
@@ -44,7 +44,7 @@ def test_tags_are_case_insensitive(client, session):
     response2 = client.post(
         "/api/admin/articles",
         json={"title": "Article 2", "content": {}, "tag_names": ["docker"]},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     assert response2.status_code == 200
     data2 = response2.json()
@@ -54,13 +54,13 @@ def test_tags_are_case_insensitive(client, session):
     assert tag_id_1 == tag_id_2
 
 
-def test_update_article_replaces_tags(client, session):
+def test_update_article_replaces_tags(client, session, admin_token):
     """Updating an article with new tag_names should replace existing tags."""
     # Create article with docker tag
     create_response = client.post(
         "/api/admin/articles",
         json={"title": "Update Test", "content": {}, "tag_names": ["docker"]},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     article_id = create_response.json()["id"]
 
@@ -68,7 +68,7 @@ def test_update_article_replaces_tags(client, session):
     update_response = client.put(
         f"/api/articles/{article_id}",
         json={"tag_names": ["vue"]},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     assert update_response.status_code == 200
     data = update_response.json()
@@ -76,12 +76,12 @@ def test_update_article_replaces_tags(client, session):
     assert data["tags"][0]["slug"] == "vue"
 
 
-def test_tag_slugs_are_auto_generated(client, session):
+def test_tag_slugs_are_auto_generated(client, session, admin_token):
     """Tag names should be converted to URL-safe slugs."""
     response = client.post(
         "/api/admin/articles",
         json={"title": "Slug Test", "content": {}, "tag_names": ["Game Design", "Vue.js"]},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     assert response.status_code == 200
     data = response.json()
@@ -90,30 +90,30 @@ def test_tag_slugs_are_auto_generated(client, session):
     assert "vue-js" in slugs
 
 
-def test_max_eight_tags(client, session):
+def test_max_eight_tags(client, session, admin_token):
     """Creating an article with more than 8 tags should fail validation."""
     response = client.post(
         "/api/admin/articles",
         json={"title": "Too Many Tags", "content": {}, "tag_names": ["a", "b", "c", "d", "e", "f", "g", "h", "i"]},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     assert response.status_code == 422
 
 
-def test_get_tag_by_slug_returns_tag_and_articles(client, session):
+def test_get_tag_by_slug_returns_tag_and_articles(client, session, admin_token):
     """GET /api/tags/{slug} should return the tag with its published articles."""
     # Create and publish an article with a tag
     create_response = client.post(
         "/api/admin/articles",
         json={"title": "Docker Guide", "content": {}, "tag_names": ["docker"]},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     article_id = create_response.json()["id"]
     # Publish it
     client.put(
         f"/api/articles/{article_id}",
         json={"status": "published"},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
 
     response = client.get("/api/tags/docker")
@@ -126,19 +126,19 @@ def test_get_tag_by_slug_returns_tag_and_articles(client, session):
     assert data["articles"][0]["title"] == "Docker Guide"
 
 
-def test_get_unknown_tag_returns_404(client, session):
+def test_get_unknown_tag_returns_404(client, session, admin_token):
     """GET /api/tags/{slug} for a non-existent tag should return 404."""
     response = client.get("/api/tags/nonexistent")
     assert response.status_code == 404
 
 
-def test_delete_unused_tag_returns_204(client, session):
+def test_delete_unused_tag_returns_204(client, session, admin_token):
     """DELETE /api/admin/tags/{id} for an unused tag should return 204."""
     # Create a tag by creating an article, then remove the tag
     create_response = client.post(
         "/api/admin/articles",
         json={"title": "Temp Article", "content": {}, "tag_names": ["temp-tag"]},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     article_id = create_response.json()["id"]
     tag_id = create_response.json()["tags"][0]["id"]
@@ -147,54 +147,54 @@ def test_delete_unused_tag_returns_204(client, session):
     client.put(
         f"/api/articles/{article_id}",
         json={"tag_names": []},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
 
     # Now delete the unused tag
     response = client.delete(
         f"/api/admin/tags/{tag_id}",
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     assert response.status_code == 204
 
 
-def test_delete_used_tag_returns_409(client, session):
+def test_delete_used_tag_returns_409(client, session, admin_token):
     """DELETE /api/admin/tags/{id} for a used tag should return 409 with article count."""
     # Create an article with a tag
     create_response = client.post(
         "/api/admin/articles",
         json={"title": "Tagged Article", "content": {}, "tag_names": ["in-use"]},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     tag_id = create_response.json()["tags"][0]["id"]
 
     # Try to delete the used tag
     response = client.delete(
         f"/api/admin/tags/{tag_id}",
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     assert response.status_code == 409
     data = response.json()
     assert data["detail"]["article_count"] == 1
 
 
-def test_admin_tags_list_includes_article_counts(client, session):
+def test_admin_tags_list_includes_article_counts(client, session, admin_token):
     """GET /api/admin/tags should include article counts."""
     # Create two articles, one with a tag
     client.post(
         "/api/admin/articles",
         json={"title": "Tagged", "content": {}, "tag_names": ["docker"]},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     client.post(
         "/api/admin/articles",
         json={"title": "Untagged", "content": {}},
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
 
     response = client.get(
         "/api/admin/tags",
-        headers={"Authorization": "Bearer dev-token-change-in-production"},
+        headers=admin_token,
     )
     assert response.status_code == 200
     data = response.json()

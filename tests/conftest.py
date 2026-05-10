@@ -25,3 +25,12 @@ def client_fixture(session: Session):
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()
+
+@pytest.fixture(name="admin_token")
+def admin_token_fixture(session: Session) -> dict:
+    from app.models.user import User
+    from sqlmodel import select
+    from app.services.auth_service import create_access_token
+    admin = session.exec(select(User)).first()
+    token = create_access_token(data={"sub": str(admin.id)})
+    return {"Authorization": f"Bearer {token}"}
