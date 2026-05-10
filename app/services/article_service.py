@@ -1,9 +1,13 @@
 import uuid
 import re
-from typing import Optional
+from typing import Optional, List
 from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload
 from app.models.article import Article
-from app.services.content_service import auto_generate_description
+from app.models.tag import Tag
+from app.services.content_service import auto_generate_description, extract_plain_text_from_tiptap
+from app.services.search_service import build_search_text
+from app.services.tag_service import get_or_create_tags
 
 def generate_slug(title: str, session: Session) -> str:
     """Generate a unique URL slug from a title."""
@@ -19,10 +23,13 @@ def generate_slug(title: str, session: Session) -> str:
     
     return slug
 
-def create_article(session: Session, title: str, content: dict, description: Optional[str] = None, send_newsletter: bool = True) -> Article:
+def create_article(session: Session, title: str, content: dict, description: Optional[str] = None, send_newsletter: bool = True, tag_names: Optional[List[str]] = None) -> Article:
     slug = generate_slug(title, session)
     if description is None:
         description = auto_generate_description(content)
+    
+    tags = get_or_create_tags(session, tag_names or [])
+    
     article = Article(
         title=title,
         slug=slug,
@@ -30,36 +37,62 @@ def create_article(session: Session, title: str, content: dict, description: Opt
         description=description,
         status="draft",
         send_newsletter=send_newsletter,
+        search_text=build_search_text(title, description, content, [t.name for t in tags]),
     )
+    article.tags = tags
     session.add(article)
     session.commit()
     session.refresh(article)
-    return article
+    # Eager-load tags for serialization
+    return session.exec(
+        select(Article).where(Article.id == article.id).options(selectinload(Article.tags))
+    ).first()
 
 def get_article_by_slug(session: Session, slug: str) -> Optional[Article]:
-    return session.exec(select(Article).where(Article.slug == slug)).first()
+    return session.exec(
+        select(Article)
+        .where(Article.slug == slug)
+        .options(selectinload(Article.tags))
+    ).first()
 
 def list_published_articles(session: Session):
     return session.exec(
         select(Article)
         .where(Article.status == "published")
         .order_by(Article.published_at.desc())
+        .options(selectinload(Article.tags))
     ).all()
 
 def list_all_articles(session: Session):
     return session.exec(
         select(Article)
         .order_by(Article.created_at.desc())
+        .options(selectinload(Article.tags))
     ).all()
 
 def update_article(session: Session, article: Article, **kwargs) -> Article:
+    tag_names = kwargs.pop("tag_names", None)
     for key, value in kwargs.items():
         if hasattr(article, key):
             setattr(article, key, value)
+    
+    if tag_names is not None:
+        article.tags = get_or_create_tags(session, tag_names)
+    
+    # Rebuild search text if title, description, content, or tags changed
+    article.search_text = build_search_text(
+        article.title,
+        article.description,
+        article.content,
+        [t.name for t in article.tags],
+    )
     session.add(article)
     session.commit()
     session.refresh(article)
-    return article
+    # Eager-load tags for serialization
+    return session.exec(
+        select(Article).where(Article.id == article.id).options(selectinload(Article.tags))
+    ).first()
 
 def delete_article(session: Session, article: Article) -> None:
     session.delete(article)

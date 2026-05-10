@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
-from typing import Optional
-from sqlmodel import SQLModel, Field, Column
-from sqlalchemy import JSON
+from typing import Optional, List
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import JSON, Column, Text
+from app.models.tag import ArticleTag
 
 class Article(SQLModel, table=True):
     __tablename__ = "articles"
@@ -15,5 +16,8 @@ class Article(SQLModel, table=True):
     status: str = Field(default="draft", nullable=False)  # "draft" or "published"
     send_newsletter: bool = Field(default=True, nullable=False)
     published_at: Optional[datetime] = Field(default=None)
+    search_text: Optional[str] = Field(default=None, sa_column=Column(Text))
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+    tags: List["Tag"] = Relationship(back_populates="articles", link_model=ArticleTag)

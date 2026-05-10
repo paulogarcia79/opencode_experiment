@@ -169,7 +169,7 @@ const editor = useEditor({
     emit('update:modelValue', editor.getJSON())
   },
   editorProps: {
-    handleDrop: (view, event, slice, moved) => {
+    handleDrop: (_view, event, _slice, moved) => {
       if (moved) return false
       const dt = event.dataTransfer
       if (!dt) return false
@@ -181,7 +181,7 @@ const editor = useEditor({
       }
       return false
     },
-    handlePaste: (view, event, slice) => {
+    handlePaste: (_view, event, _slice) => {
       const dt = event.clipboardData
       if (!dt) return false
       const imageFile = getImageFileFromDataTransfer(dt)

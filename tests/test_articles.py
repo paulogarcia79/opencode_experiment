@@ -126,3 +126,84 @@ def test_admin_list_all_articles(client: TestClient, session):
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
+
+def test_rss_feed(client: TestClient, session):
+    from app.services.article_service import create_article, update_article
+    from datetime import datetime
+    
+    article = create_article(session, "RSS Test Article", {"type": "doc", "content": [{"type": "text", "text": "Hello world"}]})
+    update_article(session, article, status="published", published_at=datetime.utcnow(), description="A test article for RSS.")
+    
+    response = client.get("/feed.xml")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/atom+xml"
+    content = response.text
+    assert "<feed xmlns=\"http://www.w3.org/2005/Atom\">" in content
+    assert "RSS Test Article" in content
+    assert "/articles/rss-test-article" in content
+    assert "A test article for RSS." in content
+
+def test_rss_feed_excludes_drafts(client: TestClient, session):
+    from app.services.article_service import create_article
+    
+    create_article(session, "Draft Only", {"type": "doc"})
+    
+    response = client.get("/feed.xml")
+    assert response.status_code == 200
+    content = response.text
+    assert "Draft Only" not in content
+
+
+def test_sitemap_xml(client: TestClient, session):
+    from app.services.article_service import create_article, update_article
+    from datetime import datetime
+
+    article = create_article(session, "Sitemap Article", {"type": "doc"})
+    update_article(session, article, status="published", published_at=datetime.utcnow())
+
+    response = client.get("/sitemap.xml")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/xml"
+    content = response.text
+    assert "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">" in content
+    assert "<loc>http://localhost/</loc>" in content
+    assert f"<loc>http://localhost/articles/{article.slug}</loc>" in content
+    assert "<loc>http://localhost/feed.xml</loc>" in content
+    assert "<lastmod>" in content
+
+
+def test_sitemap_excludes_drafts(client: TestClient, session):
+    from app.services.article_service import create_article
+
+    create_article(session, "Draft Sitemap", {"type": "doc"})
+
+    response = client.get("/sitemap.xml")
+    assert response.status_code == 200
+    content = response.text
+    assert "Draft Sitemap" not in content
+
+
+def test_sitemap_lastmod_for_homepage_uses_latest_published_at(client: TestClient, session):
+    from app.services.article_service import create_article, update_article
+    from datetime import datetime
+
+    article = create_article(session, "Homepage Lastmod", {"type": "doc"})
+    update_article(session, article, status="published", published_at=datetime(2025, 1, 15, 10, 0, 0))
+
+    response = client.get("/sitemap.xml")
+    assert response.status_code == 200
+    content = response.text
+    assert "2025-01-15T10:00:00" in content
+
+
+def test_robots_txt(client: TestClient):
+    response = client.get("/robots.txt")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+    content = response.text
+    assert "User-agent: *" in content
+    assert "Disallow: /admin/" in content
+    assert "Disallow: /api/" in content
+    assert "Disallow: /uploads/" in content
+    assert "Sitemap:" in content
+    assert "/sitemap.xml" in content

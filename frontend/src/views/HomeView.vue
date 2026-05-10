@@ -16,15 +16,33 @@
               </h1>
             </div>
           </RouterLink>
-          <nav class="hidden sm:flex items-center gap-1">
-            <RouterLink
-              to="/"
-              class="px-3 py-1.5 text-sm font-medium text-slate-400 hover:text-white rounded-md hover:bg-white/5 transition-all duration-200 cursor-pointer"
-              exact-active-class="text-primary-400 bg-primary-500/10"
+          <div class="flex items-center gap-3">
+            <form
+              class="hidden sm:flex items-center"
+              @submit.prevent="handleSearch"
             >
-              Articles
-            </RouterLink>
-          </nav>
+              <div class="relative">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  v-model="searchQuery"
+                  type="search"
+                  placeholder="Search..."
+                  class="w-48 lg:w-64 bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+            </form>
+            <nav class="hidden sm:flex items-center gap-1">
+              <RouterLink
+                to="/"
+                class="px-3 py-1.5 text-sm font-medium text-slate-400 hover:text-white rounded-md hover:bg-white/5 transition-all duration-200 cursor-pointer"
+                exact-active-class="text-primary-400 bg-primary-500/10"
+              >
+                Articles
+              </RouterLink>
+            </nav>
+          </div>
         </div>
       </div>
     </header>
@@ -96,6 +114,8 @@
               <div class="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
                 <time :datetime="article.published_at" class="font-mono text-xs">{{ formatDate(article.published_at) }}</time>
                 <span class="w-1 h-1 rounded-full bg-slate-600" />
+                <span class="font-mono text-xs">{{ formatReadingTime(estimateReadingTime(article.content)) }}</span>
+                <span class="w-1 h-1 rounded-full bg-slate-600" />
                 <span class="font-mono text-xs text-slate-600">{{ article.slug }}</span>
               </div>
               <p v-if="article.description" class="mt-4 text-slate-400 leading-relaxed line-clamp-2">
@@ -144,11 +164,23 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { fetchArticles } from '@/composables/useApi'
+import { useHead } from '@/composables/useHead'
+import { estimateReadingTime, formatReadingTime } from '@/composables/useReadingTime'
 
+const router = useRouter()
 const articles = ref<any[]>([])
 const loading = ref(true)
 const error = ref('')
+const searchQuery = ref('')
+
+function handleSearch() {
+  const q = searchQuery.value.trim()
+  if (q) {
+    router.push({ path: '/search', query: { q } })
+  }
+}
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return ''
@@ -160,6 +192,7 @@ function formatDate(dateStr: string): string {
 }
 
 onMounted(async () => {
+  useHead({})
   try {
     articles.value = await fetchArticles()
   } catch (e: any) {

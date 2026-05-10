@@ -9,6 +9,9 @@ import AdminLayout from '@/components/AdminLayout.vue'
 import AdminArticlesView from '@/views/AdminArticlesView.vue'
 import AdminArticleEditView from '@/views/AdminArticleEditView.vue'
 import AdminMediaView from '@/views/AdminMediaView.vue'
+import AdminTagsView from '@/views/AdminTagsView.vue'
+import SearchView from '@/views/SearchView.vue'
+import TagArticlesView from '@/views/TagArticlesView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -32,6 +35,16 @@ const router = createRouter({
       path: '/unsubscribe',
       name: 'unsubscribe',
       component: UnsubscribeView,
+    },
+    {
+      path: '/search',
+      name: 'search',
+      component: SearchView,
+    },
+    {
+      path: '/tags/:slug',
+      name: 'tag-articles',
+      component: TagArticlesView,
     },
     {
       path: '/admin/login',
@@ -64,12 +77,17 @@ const router = createRouter({
           name: 'admin-media',
           component: AdminMediaView,
         },
+        {
+          path: 'tags',
+          name: 'admin-tags',
+          component: AdminTagsView,
+        },
       ],
     },
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const store = useAdminStore()
   if (to.meta.requiresAuth && !store.token) {
     next('/admin/login')

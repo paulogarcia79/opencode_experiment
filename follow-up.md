@@ -14,11 +14,11 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 
 ## Content Management
 
-- [ ] **Image upload** — Drag-and-drop image upload to S3/local storage with custom TipTap node
-- [ ] **Tags and categories** — Taxonomy system for organizing articles
+- [x] **Image upload** — Drag-and-drop image upload to local storage with custom TipTap node (S3 backend still pending)
+- [x] **Tags and categories** — Taxonomy system for organizing articles (flat many-to-many tags with hybrid autocomplete input, tag pages, admin management, tag-aware search)
 - [ ] **Article series / collections** — Group related articles into numbered series
 - [ ] **Scheduled publishing** — Publish articles at a future date/time
-- [ ] **Auto-save drafts** — Periodic auto-save while editing to prevent data loss
+- [x] **Auto-save drafts** — Periodic auto-save while editing to prevent data loss (2s debounce + 30s heartbeat, retry with exponential backoff, new-article creation with deferral)
 - [ ] **Revision history** — Track and restore previous versions of articles
 - [ ] **Markdown import** — Import articles from Markdown files
 
@@ -34,13 +34,13 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 
 ## Public Site & SEO
 
-- [ ] **RSS / Atom feed** — `/feed.xml` for RSS readers
-- [ ] **SEO meta tags** — Title, description, canonical URLs, structured data
-- [ ] **OpenGraph / Twitter Cards** — Social sharing previews with images
-- [ ] **Sitemap generation** — XML sitemap for search engines
-- [ ] **Full-text search** — Search across article titles and content
-- [ ] **Social sharing buttons** — Share to Twitter/X, LinkedIn, etc.
-- [ ] **Reading time estimate** — Display estimated reading time per article
+- [x] **RSS / Atom feed** — `/feed.xml` for RSS readers
+- [x] **SEO meta tags** — Title, description, canonical URLs, structured data
+- [x] **OpenGraph / Twitter Cards** — Social sharing previews with images
+- [x] **Sitemap generation** — XML sitemap for search engines (`/sitemap.xml` with published articles, homepage, RSS feed; `<lastmod>` only)
+- [x] **Full-text search** — Search across article titles, descriptions, content, and tags (`/api/articles/search?q=term`, SQLite LIKE fallback + PostgreSQL tsvector ready, relevance-ranked with tag matches scoring below title/description)
+- [x] **Social sharing buttons** — Share to Twitter/X, LinkedIn, Copy link on article detail page with UTM tracking
+- [x] **Reading time estimate** — Display estimated reading time per article
 
 ## Analytics & Dashboard
 
@@ -51,7 +51,7 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 
 ## Infrastructure & DevEx
 
-- [ ] **Frontend tests** — Vitest + Vue Test Utils for components and composables
+- [x] **Frontend tests** — Vitest + Vue Test Utils for components and composables (coverage: useImageUpload, AdminMediaView, useHead, useReadingTime — more views needed)
 - [ ] **E2E tests** — Playwright tests for critical user flows
 - [ ] **API rate limiting** — Protect public endpoints from abuse
 - [ ] **Caching layer** — Redis caching for published articles and lists

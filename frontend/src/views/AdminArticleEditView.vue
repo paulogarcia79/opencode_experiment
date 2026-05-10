@@ -37,6 +37,15 @@
         />
       </div>
 
+      <!-- Tags -->
+      <div>
+        <label class="block text-sm font-medium text-slate-400 mb-2">
+          Tags
+          <span class="text-slate-600 font-normal">— max 8</span>
+        </label>
+        <TagInput v-model="form.tags" />
+      </div>
+
       <!-- Content Editor -->
       <div>
         <label class="block text-sm font-medium text-slate-400 mb-2">Content</label>
@@ -94,6 +103,45 @@
         >
           Cancel
         </RouterLink>
+
+        <!-- Auto-save status -->
+        <span
+          v-if="autosaveStatus === 'saving'"
+          class="text-xs text-slate-500 animate-pulse"
+        >
+          Saving...
+        </span>
+        <span
+          v-else-if="autosaveStatus === 'saved'"
+          class="text-xs text-emerald-500/80"
+        >
+          Saved
+        </span>
+        <span
+          v-else-if="autosaveStatus === 'retrying'"
+          class="text-xs text-amber-500/80"
+        >
+          Auto-save failed (retrying...)
+        </span>
+        <span
+          v-else-if="autosaveStatus === 'error'"
+          class="text-xs text-red-400 flex items-center gap-2"
+        >
+          Auto-save failed
+          <button
+            type="button"
+            @click="retryAutoSave"
+            class="text-xs text-primary-400 hover:text-primary-300 underline cursor-pointer"
+          >
+            Retry
+          </button>
+        </span>
+        <span
+          v-else-if="!isEditing && !form.title"
+          class="text-xs text-slate-600"
+        >
+          Add a title to enable auto-save
+        </span>
       </div>
 
       <!-- Status Messages -->
@@ -125,10 +173,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TipTapEditor from '@/components/TipTapEditor.vue'
+import TagInput from '@/components/TagInput.vue'
 import { createArticle, updateArticle, fetchAdminArticle } from '@/composables/useAdminApi'
+import { useAutoSave } from '@/composables/useAutoSave'
 
 const route = useRoute()
 const router = useRouter()
@@ -140,24 +190,42 @@ const form = ref({
   content: { type: 'doc', content: [{ type: 'paragraph' }] },
   status: 'draft',
   send_newsletter: true,
+  tags: [] as { name: string; slug: string }[],
 })
 
 const state = ref<'idle' | 'success' | 'error'>('idle')
 const message = ref('')
 const submitting = ref(false)
 const editorKey = ref(0)
+const articleId = ref<string | null>(null)
+
+const autosaveForm = computed(() => ({
+  title: form.value.title,
+  description: form.value.description,
+  content: form.value.content,
+  tag_names: form.value.tags.map((t) => t.name),
+}))
+
+const { status: autosaveStatus, retry: retryAutoSave } = useAutoSave(autosaveForm, articleId, {
+  onCreated: (id: string) => {
+    router.replace(`/admin/articles/${id}/edit`)
+    isEditing.value = true
+  },
+})
 
 onMounted(async () => {
-  const articleId = route.params.id as string
-  if (articleId && articleId !== 'new') {
+  const id = route.params.id as string
+  if (id && id !== 'new') {
     isEditing.value = true
     try {
-      const article = await fetchAdminArticle(articleId)
+      const article = await fetchAdminArticle(id)
       form.value.title = article.title
       form.value.description = article.description || ''
       form.value.content = article.content || { type: 'doc', content: [{ type: 'paragraph' }] }
       form.value.status = article.status
       form.value.send_newsletter = article.send_newsletter
+      form.value.tags = article.tags || []
+      articleId.value = id
       editorKey.value++
     } catch (e: any) {
       state.value = 'error'
@@ -180,6 +248,7 @@ async function handleSubmit() {
       description: form.value.description || undefined,
       status: form.value.status,
       send_newsletter: form.value.send_newsletter,
+      tag_names: form.value.tags.map((t) => t.name),
     }
 
     if (isEditing.value) {

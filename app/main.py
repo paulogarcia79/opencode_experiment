@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import create_db_and_tables, get_session
 from app.routers import articles, subscribers, images
-from app.models import User, Article, Subscriber, NewsletterSend, ImageAsset
+from app.models import User, Article, Subscriber, NewsletterSend, ImageAsset, Tag, ArticleTag
 from app.services.seed_service import seed_default_admin
 
 app = FastAPI(title="Blog + Newsletter Platform", version="0.1.0")
