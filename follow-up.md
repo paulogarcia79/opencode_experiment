@@ -35,13 +35,13 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 ## Public Site & SEO
 
 - [x] **RSS / Atom feed** — `/feed.xml` for RSS readers
-- [x] **SEO meta tags** — Title, description, canonical URLs (structured data/JSON-LD still pending)
+- [x] **SEO meta tags** — Title, description, canonical URLs
+- [x] **Structured data (JSON-LD)** — Schema.org Article markup on article pages, WebSite + SearchAction on homepage
 - [x] **OpenGraph / Twitter Cards** — Social sharing previews with images
 - [x] **Sitemap generation** — XML sitemap for search engines (`/sitemap.xml` with published articles, homepage, RSS feed; `<lastmod>` only)
 - [x] **Full-text search** — Search across article titles, descriptions, content, and tags (`/api/articles/search?q=term`, SQLite LIKE fallback + PostgreSQL tsvector ready, relevance-ranked with tag matches scoring below title/description)
 - [x] **Social sharing buttons** — Share to Twitter/X, LinkedIn, Copy link on article detail page with UTM tracking
 - [x] **Reading time estimate** — Display estimated reading time per article
-- [ ] **Structured data (JSON-LD)** — Schema.org Article markup for search engines
 
 ## Analytics & Dashboard
 
@@ -52,7 +52,7 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 
 ## Infrastructure & DevEx
 
-- [x] **Frontend tests** — Vitest + Vue Test Utils for components and composables (20 test files, 113 tests: admin store, useAdminApi, useTagSearch, NewsletterForm, TipTapRenderer, ArticleView, AdminArticlesView, AdminArticleEditView + prior coverage)
+- [x] **Frontend tests** — Vitest + Vue Test Utils for components and composables (20 test files, 116 tests: admin store, useAdminApi, useTagSearch, NewsletterForm, TipTapRenderer, ArticleView, AdminArticlesView, AdminArticleEditView, useHead JSON-LD + prior coverage)
 - [ ] **TipTapEditor tests** — Deferred due to @tiptap/vue-3 mocking complexity
 - [ ] **E2E tests** — Playwright tests for critical user flows
 - [ ] **API rate limiting** — Protect public endpoints from abuse

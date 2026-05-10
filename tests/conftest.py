@@ -4,6 +4,7 @@ from sqlmodel import SQLModel, Session, create_engine
 from sqlmodel.pool import StaticPool
 from app.main import app
 from app.database import get_session
+from app.services.seed_service import seed_default_admin
 
 @pytest.fixture(name="session")
 def session_fixture():
@@ -12,6 +13,7 @@ def session_fixture():
     )
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
+        seed_default_admin(session)
         yield session
 
 @pytest.fixture(name="client")

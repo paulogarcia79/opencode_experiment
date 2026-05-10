@@ -46,6 +46,10 @@ class ArticleAutoSave(BaseModel):
 class SubscribeRequest(BaseModel):
     email: str
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
 class TagRead(BaseModel):
     id: str
     name: str

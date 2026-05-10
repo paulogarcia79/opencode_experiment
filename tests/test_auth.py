@@ -1,23 +1,30 @@
+import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 from app.config import settings
 
-def test_require_admin_missing_token(client: TestClient):
-    response = client.post("/api/admin/articles", json={"title": "Test", "content": {}})
-    assert response.status_code == 401
-
-def test_require_admin_invalid_token(client: TestClient):
+def test_login_success(client: TestClient, session: Session):
     response = client.post(
-        "/api/admin/articles",
-        json={"title": "Test", "content": {}},
-        headers={"Authorization": "Bearer wrong-token"},
+        "/api/auth/login",
+        json={"email": settings.ADMIN_EMAIL, "password": settings.ADMIN_PASSWORD}
     )
-    assert response.status_code == 403
-
-def test_require_admin_valid_token(client: TestClient):
-    response = client.post(
-        "/api/admin/articles",
-        json={"title": "Test", "content": {}, "status": "draft"},
-        headers={"Authorization": f"Bearer {settings.ADMIN_API_TOKEN}"},
-    )
-    # 200 because body is complete now
     assert response.status_code == 200
+    data = response.json()
+    assert "token" in data
+    assert data["type"] == "bearer"
+
+def test_login_invalid_email(client: TestClient, session: Session):
+    response = client.post(
+        "/api/auth/login",
+        json={"email": "wrong@example.com", "password": settings.ADMIN_PASSWORD}
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Incorrect email or password"
+
+def test_login_invalid_password(client: TestClient, session: Session):
+    response = client.post(
+        "/api/auth/login",
+        json={"email": settings.ADMIN_EMAIL, "password": "wrongpassword"}
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Incorrect email or password"

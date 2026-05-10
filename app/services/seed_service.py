@@ -2,6 +2,7 @@ import uuid
 from sqlmodel import Session, select
 from app.config import settings
 from app.models.user import User
+from app.services.auth_service import get_password_hash
 
 def seed_default_admin(session: Session) -> None:
     """Create a default admin user if no users exist in the database."""
@@ -12,7 +13,7 @@ def seed_default_admin(session: Session) -> None:
     admin = User(
         id=uuid.uuid4(),
         email=settings.ADMIN_EMAIL,
-        hashed_password="not-used-bearer-auth-only",  # Bearer token auth; password auth deferred
+        hashed_password=get_password_hash(settings.ADMIN_PASSWORD),
         is_admin=True,
     )
     session.add(admin)

@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/blog"
     ADMIN_API_TOKEN: str = "dev-token-change-in-production"
     ADMIN_EMAIL: str = "admin@example.com"
+    ADMIN_PASSWORD: str = "admin"
+    JWT_SECRET_KEY: str = "super-secret-key-change-in-production"
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = "newsletter@example.com"
     APP_BASE_URL: str = "http://localhost:5173"

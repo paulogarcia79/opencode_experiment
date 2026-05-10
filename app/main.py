@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import create_db_and_tables, get_session
-from app.routers import articles, subscribers, images
+from app.routers import articles, subscribers, images, auth
 from app.models import User, Article, Subscriber, NewsletterSend, ImageAsset, Tag, ArticleTag
 from app.services.seed_service import seed_default_admin
 
@@ -16,6 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(articles.router)
 app.include_router(subscribers.router)
 app.include_router(images.router)
