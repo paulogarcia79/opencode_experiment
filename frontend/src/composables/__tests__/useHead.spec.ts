@@ -9,6 +9,8 @@ describe('useHead', () => {
     metas.forEach((el) => el.remove())
     const links = document.querySelectorAll('link[rel="canonical"]')
     links.forEach((el) => el.remove())
+    const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]')
+    jsonLdScripts.forEach((el) => el.remove())
   })
 
   afterEach(() => {
@@ -75,5 +77,46 @@ describe('useHead', () => {
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(
       'Deep dives into software development, game design, and the technology shaping our digital world.'
     )
+  })
+
+  it('injects JSON-LD script tag', () => {
+    useHead({
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: 'Test Article',
+      },
+    })
+
+    const script = document.querySelector('script[type="application/ld+json"]')
+    expect(script).not.toBeNull()
+    const data = JSON.parse(script!.textContent!)
+    expect(data['@context']).toBe('https://schema.org')
+    expect(data['@type']).toBe('Article')
+    expect(data.headline).toBe('Test Article')
+  })
+
+  it('updates existing JSON-LD script tag instead of creating duplicate', () => {
+    useHead({
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'First' },
+    })
+    useHead({
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Second' },
+    })
+
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]')
+    expect(scripts.length).toBe(1)
+    const data = JSON.parse(scripts[0].textContent!)
+    expect(data.headline).toBe('Second')
+  })
+
+  it('resetHead removes JSON-LD script tag', () => {
+    useHead({
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Test' },
+    })
+    expect(document.querySelector('script[type="application/ld+json"]')).not.toBeNull()
+
+    resetHead()
+    expect(document.querySelector('script[type="application/ld+json"]')).toBeNull()
   })
 })

@@ -13,6 +13,7 @@ export interface HeadMeta {
   twitterCard?: string
   twitterTitle?: string
   twitterDescription?: string
+  jsonLd?: Record<string, unknown>
 }
 
 const SITE_NAME = 'Tech & Games Blog'
@@ -37,6 +38,16 @@ function setLinkTag(rel: string, href: string) {
     document.head.appendChild(el)
   }
   el.href = href
+}
+
+function setJsonLd(data: Record<string, unknown>) {
+  let el = document.querySelector('script[type="application/ld+json"]') as HTMLScriptElement | null
+  if (!el) {
+    el = document.createElement('script')
+    el.type = 'application/ld+json'
+    document.head.appendChild(el)
+  }
+  el.textContent = JSON.stringify(data)
 }
 
 export function useHead(meta: HeadMeta) {
@@ -72,6 +83,11 @@ export function useHead(meta: HeadMeta) {
   if (meta.canonical) {
     setLinkTag('canonical', meta.canonical)
   }
+
+  // JSON-LD
+  if (meta.jsonLd) {
+    setJsonLd(meta.jsonLd)
+  }
 }
 
 /**
@@ -87,4 +103,10 @@ export function resetHead() {
   setMetaTag('twitter:card', 'summary')
   setMetaTag('twitter:title', SITE_NAME)
   setMetaTag('twitter:description', DEFAULT_DESCRIPTION)
+
+  // Remove JSON-LD script tag
+  const jsonLdScript = document.querySelector('script[type="application/ld+json"]')
+  if (jsonLdScript) {
+    jsonLdScript.remove()
+  }
 }
