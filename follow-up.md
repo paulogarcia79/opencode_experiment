@@ -55,7 +55,7 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 - [x] **Frontend tests** — Vitest + Vue Test Utils for components and composables (20 test files, 116 tests: admin store, useAdminApi, useTagSearch, NewsletterForm, TipTapRenderer, ArticleView, AdminArticlesView, AdminArticleEditView, useHead JSON-LD + prior coverage)
 - [ ] **TipTapEditor tests** — Deferred due to @tiptap/vue-3 mocking complexity
 - [ ] **E2E tests** — Playwright tests for critical user flows
-- [ ] **API rate limiting** — Protect public endpoints from abuse
+- [x] **API rate limiting** — Protect public endpoints from abuse (slowapi with Redis backend, per-IP limits: search 10/min, subscribe 3/min, article views 30/min, admin bypass, X-Forwarded-For support, configurable via env vars)
 - [ ] **Caching layer** — Redis caching for published articles and lists
 - [ ] **CDN integration** — CloudFront/Cloudflare for static assets
 - [ ] **Backup strategy** — Automated PostgreSQL backups
