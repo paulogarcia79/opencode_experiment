@@ -26,7 +26,7 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 
 - [x] **Rich email templates** — Branded MJML + Jinja2 templates with responsive layout and admin preview API
 - [x] **Email open/click tracking** — Resend webhook integration for engagement analytics (Opens, Clicks, CTR, Open Rate)
-- [ ] **Bounce handling** — Automatically mark bounced emails as unsubscribed
+- [x] **Bounce handling** — Automatically mark bounced emails as unsubscribed (Svix signature verification, idempotency via svix_id, permanent bounce → unsubscribe, complaint → unsubscribe, bounce/complaint rate in analytics)
 - [x] **Background job queue** — Redis + ARQ for reliable newsletter delivery at scale (Fan-out pattern, real-time progress tracking, automatic retries)
 - [ ] **Subscriber segmentation** — Tag-based segments for targeted newsletters
 - [ ] **A/B testing** — Test subject lines or content variations
