@@ -89,7 +89,7 @@ def send_confirmation_email(email: str, token: str) -> None:
         logger.error(f"Failed to send confirmation email to {email}: {str(e)}")
         raise EmailServiceError(str(e))
 
-def send_newsletter_email(email: str, article_title: str, article_html: str, unsubscribe_token: str) -> None:
+def send_newsletter_email(email: str, article_title: str, article_html: str, unsubscribe_token: str, send_id: str = None) -> None:
     if not settings.RESEND_API_KEY:
         return
     unsubscribe_url = f"{settings.APP_BASE_URL}/unsubscribe?token={unsubscribe_token}"
@@ -112,8 +112,38 @@ def send_newsletter_email(email: str, article_title: str, article_html: str, uns
         }
         if attachments:
             params["attachments"] = attachments
+        
+        if send_id:
+            params["tags"] = [{"name": "newsletter_send_id", "value": send_id}]
             
         resend.Emails.send(params)
     except Exception as e:
         logger.error(f"Failed to send newsletter email to {email}: {str(e)}")
+        raise EmailServiceError(str(e))
+
+def send_password_reset_email(email: str, reset_token: str) -> None:
+    if not settings.RESEND_API_KEY:
+        return
+    reset_url = f"{settings.APP_BASE_URL}/admin/reset-password?token={reset_token}"
+    
+    html = render("password_reset.mjml", {
+        "reset_url": reset_url,
+        "preview_text": "Reset your password.",
+    })
+    
+    html, attachments = _process_cids(html)
+    
+    try:
+        params = {
+            "from": settings.RESEND_FROM_EMAIL,
+            "to": email,
+            "subject": f"Reset your password for {settings.SITE_NAME}",
+            "html": html,
+        }
+        if attachments:
+            params["attachments"] = attachments
+            
+        resend.Emails.send(params)
+    except Exception as e:
+        logger.error(f"Failed to send password reset email to {email}: {str(e)}")
         raise EmailServiceError(str(e))
