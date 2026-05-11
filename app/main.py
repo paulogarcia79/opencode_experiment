@@ -9,7 +9,7 @@ from app.routers import articles, subscribers, images, auth, analytics, webhooks
 from app.routers.analytics import article_analytics_router
 from app.models import User, Article, Subscriber, NewsletterSend, ImageAsset, Tag, ArticleTag
 from app.services.seed_service import seed_default_admin
-from app.limiter import get_limiter, rate_limit_exceeded_handler
+from app.limiter import limiter, rate_limit_exceeded_handler
 from arq import create_pool
 from app.redis import get_redis_settings
 
@@ -32,7 +32,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Blog + Newsletter Platform", version="0.1.0", lifespan=lifespan)
 
-limiter = get_limiter()
 app.state.limiter = limiter
 
 app.add_middleware(

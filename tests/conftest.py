@@ -29,6 +29,11 @@ def client_fixture(session: Session, arq_pool):
         return session
 
     app.dependency_overrides[get_session] = get_session_override
+
+    # Reset rate limiter state between tests
+    from app.limiter import limiter
+    limiter.reset()
+
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()

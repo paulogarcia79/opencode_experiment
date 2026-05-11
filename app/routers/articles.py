@@ -3,6 +3,7 @@ from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Response, UploadFile, File
 from sqlmodel import Session, select, func
+from starlette.requests import Request
 from app.database import get_session
 from app.dependencies import require_admin, get_arq_pool
 from arq.connections import ArqRedis
@@ -31,6 +32,7 @@ from app.services.view_tracking_service import record_view
 from app.models.tag import Tag, ArticleTag
 from app.models import ArticleView
 from app.config import settings
+from app.limiter import limiter
 
 router = APIRouter()
 
@@ -41,7 +43,8 @@ def list_articles_endpoint(session: Session = Depends(get_session)):
     return list_published_articles(session)
 
 @router.get("/api/articles/search", response_model=list[Article])
-def search_articles_endpoint(q: Optional[str] = None, session: Session = Depends(get_session)):
+@limiter.limit(settings.RATE_LIMIT_SEARCH)
+def search_articles_endpoint(request: Request, q: Optional[str] = None, session: Session = Depends(get_session)):
     if not q or not q.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

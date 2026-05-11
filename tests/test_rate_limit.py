@@ -100,3 +100,83 @@ class TestRateLimitMiddleware:
         assert "Try again in" in data["detail"]
         assert response2.headers.get("Retry-After") is not None
         assert int(response2.headers["Retry-After"]) > 0
+
+
+class TestSearchRateLimit:
+    """Test rate limiting on the search endpoint."""
+
+    def _create_test_app_with_search(self, limit: str = "2/minute"):
+        """Create a test FastAPI app with search endpoint and rate limiting using MemoryStorage."""
+        from fastapi import FastAPI, Depends
+        from slowapi import Limiter
+        from slowapi.errors import RateLimitExceeded
+        from slowapi.middleware import SlowAPIMiddleware
+        from starlette.requests import Request
+        from starlette.responses import JSONResponse
+        from sqlmodel import Session
+        from app.database import get_session
+
+        limiter = Limiter(
+            key_func=lambda: "test_client",
+            storage_uri="memory://",
+        )
+
+        app = FastAPI()
+
+        @app.exception_handler(RateLimitExceeded)
+        async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+            retry_after = exc.limit.limit.get_expiry()
+            return JSONResponse(
+                status_code=429,
+                content={"detail": f"Rate limit exceeded. Try again in {retry_after} seconds."},
+                headers={"Retry-After": str(retry_after)},
+            )
+
+        @app.get("/api/articles/search")
+        @limiter.limit(limit)
+        async def search_endpoint(request: Request, q: str = "", session: Session = Depends(get_session)):
+            return [{"title": f"Result for: {q}"}]
+
+        app.state.limiter = limiter
+        app.add_middleware(SlowAPIMiddleware)
+
+        return app
+
+    def test_search_rate_limit_enforced(self):
+        """Search requests beyond the limit should return 429."""
+        app = self._create_test_app_with_search(limit="2/minute")
+        client = TestClient(app)
+
+        # First 2 requests should succeed
+        response1 = client.get("/api/articles/search?q=test")
+        assert response1.status_code == 200
+
+        response2 = client.get("/api/articles/search?q=test")
+        assert response2.status_code == 200
+
+        # 3rd request should be rate limited
+        response3 = client.get("/api/articles/search?q=test")
+        assert response3.status_code == 429
+        data = response3.json()
+        assert "Rate limit exceeded" in data["detail"]
+        assert "Retry-After" in response3.headers
+
+    def test_search_rate_limit_response_format(self):
+        """Search rate limit response should have correct JSON format and Retry-After header."""
+        app = self._create_test_app_with_search(limit="1/minute")
+        client = TestClient(app)
+
+        # First request succeeds
+        response1 = client.get("/api/articles/search?q=test")
+        assert response1.status_code == 200
+
+        # Second request is rate limited
+        response2 = client.get("/api/articles/search?q=test")
+        assert response2.status_code == 429
+
+        data = response2.json()
+        assert "detail" in data
+        assert "Rate limit exceeded" in data["detail"]
+        assert "Try again in" in data["detail"]
+        assert response2.headers.get("Retry-After") is not None
+        assert int(response2.headers["Retry-After"]) > 0
