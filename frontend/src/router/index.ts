@@ -5,6 +5,8 @@ import ArticleView from '@/views/ArticleView.vue'
 import ConfirmView from '@/views/ConfirmView.vue'
 import UnsubscribeView from '@/views/UnsubscribeView.vue'
 import AdminLoginView from '@/views/AdminLoginView.vue'
+import ForgotPasswordView from '@/views/ForgotPasswordView.vue'
+import ResetPasswordView from '@/views/ResetPasswordView.vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import AdminArticlesView from '@/views/AdminArticlesView.vue'
 import AdminAnalyticsView from '@/views/AdminAnalyticsView.vue'
@@ -51,6 +53,18 @@ const router = createRouter({
       path: '/admin/login',
       name: 'admin-login',
       component: AdminLoginView,
+      meta: { public: true },
+    },
+    {
+      path: '/admin/forgot-password',
+      name: 'admin-forgot-password',
+      component: ForgotPasswordView,
+      meta: { public: true },
+    },
+    {
+      path: '/admin/reset-password',
+      name: 'admin-reset-password',
+      component: ResetPasswordView,
       meta: { public: true },
     },
     {

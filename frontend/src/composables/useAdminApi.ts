@@ -94,3 +94,29 @@ export async function sendPreviewEmail(id: string) {
   }
   return res.json()
 }
+
+export async function forgotPassword(email: string) {
+  const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Failed to send reset link')
+  }
+  return res.json()
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Failed to reset password')
+  }
+  return res.json()
+}
