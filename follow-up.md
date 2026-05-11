@@ -19,7 +19,7 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 - [x] **Scheduled publishing** — Publish articles at a future date/time (Integrated with ARQ background queue)
 - [x] **Auto-save drafts** — Periodic auto-save while editing to prevent data loss (2s debounce + 30s heartbeat, retry with exponential backoff, new-article creation with deferral)
 - [x] **Revision history** — Track and restore previous versions of articles (ArticleRevision model with full snapshot on explicit save/publish, slide-out panel with character/word-level diff view, restore with confirmation, auto-save excluded, tags restored/cleared correctly)
-- [ ] **Markdown import** — Import articles from Markdown files
+- [x] **Markdown import** — Import articles from Markdown files (GFM + YAML frontmatter, TipTap JSON conversion, remote image download, drag-and-drop UI, bulk import, per-file error reporting, table support)
 - [ ] **Article series / collections** — Group related articles into numbered series
 
 ## Newsletter & Email
