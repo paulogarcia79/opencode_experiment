@@ -30,16 +30,21 @@ TL;DR - build a tiny, end-to-end slice of the feature first, then expand it out.
 
 ## EXPLORATION
 
-Explore the repo. Read AGENTS.md for project-specific conventions. Read `openspec/config.yaml` for tech stack context.
+Explore the repo. Read AGENTS.md for project-specific conventions.
 
 ## IMPLEMENTATION
 
-Use strict TDD to complete the task:
+Follow the TDD skill at `.agents/skills/tdd/SKILL.md` strictly:
 
-- Backend (FastAPI/SQLModel): Write pytest test first, then implementation
-- Frontend (Vue 3/TypeScript): Write Vitest test first, then implementation
-- Follow the OpenSpec workflow: changes live in `openspec/changes/<name>/`
-- Never implement without tests
+- **Red-Green-Refactor loop**: Write ONE test → write minimal code to pass → refactor
+- **Vertical slices**: One test → one implementation → repeat. NEVER write all tests first then all code.
+- **Integration-style tests**: Test through public interfaces, not implementation details. Tests should survive refactors.
+- **Backend (FastAPI/SQLModel)**: pytest with TestClient, exercise real endpoints
+- **Frontend (Vue 3/TypeScript)**: Vitest with @vue/test-utils, test component behavior
+- **Never implement without tests**
+- **Never refactor while RED** — get to GREEN first
+
+See `.agents/skills/tdd/tests.md` for good vs bad test patterns and `.agents/skills/tdd/refactoring.md` for refactor candidates.
 
 ## FEEDBACK LOOPS
 
@@ -47,7 +52,7 @@ Before committing, run the feedback loops:
 
 - `pytest tests/ -v` to run backend tests
 - `cd frontend && npm run test` to run frontend tests (if frontend changed)
-- `cd frontend && npm run typecheck` to run type checker (if frontend changed)
+- `cd frontend && npm run build` to run type checker (if frontend changed)
 - `just test` to run all tests (if justfile exists)
 
 ## COMMIT
