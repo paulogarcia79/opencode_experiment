@@ -161,3 +161,56 @@ class TestArticlePerformanceAnalytics:
         fake_id = uuid.uuid4()
         response = client.get(f"/api/admin/articles/{fake_id}/analytics", headers=admin_token)
         assert response.status_code == 404
+
+
+class TestArticlesPerformanceList:
+    def test_performance_list_returns_articles_with_metrics(self, client: TestClient, session: Session, admin_token):
+        from app.models.newsletter_send import NewsletterSend
+
+        article1 = create_article(session, "Popular Article", {"type": "doc"})
+        update_article(session, article1, status="published", published_at=datetime.now(timezone.utc))
+
+        article2 = create_article(session, "Draft Article", {"type": "doc"})
+
+        # Add views to article1
+        for i in range(10):
+            view = ArticleView(
+                article_id=article1.id,
+                ip_hash=hashlib.sha256(f"192.168.1.{i}".encode()).hexdigest(),
+                viewed_at=datetime.now(timezone.utc),
+            )
+            session.add(view)
+
+        # Add newsletter sends to article1
+        for i in range(5):
+            send = NewsletterSend(
+                article_id=article1.id,
+                subscriber_id=uuid.uuid4(),
+                status="sent",
+                open_count=2,
+                click_count=1,
+            )
+            session.add(send)
+        session.commit()
+
+        response = client.get("/api/admin/articles/performance", headers=admin_token)
+        assert response.status_code == 200
+        data = response.json()
+
+        assert len(data) == 2
+        popular = next(a for a in data if a["id"] == str(article1.id))
+        assert popular["total_views"] == 10
+        assert popular["email_sent"] == 5
+        assert popular["email_opens"] == 10
+        assert popular["email_clicks"] == 5
+
+        draft = next(a for a in data if a["id"] == str(article2.id))
+        assert draft["total_views"] == 0
+        assert draft["email_sent"] == 0
+
+    def test_performance_list_unauthorized(self, client: TestClient, session: Session):
+        article = create_article(session, "Unauthorized", {"type": "doc"})
+        update_article(session, article, status="published", published_at=datetime.now(timezone.utc))
+
+        response = client.get("/api/admin/articles/performance")
+        assert response.status_code == 401

@@ -2,7 +2,7 @@ from datetime import timezone
 from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Response
-from sqlmodel import Session
+from sqlmodel import Session, select, func
 from app.database import get_session
 from app.dependencies import require_admin, get_arq_pool
 from arq.connections import ArqRedis
@@ -29,6 +29,7 @@ from app.services.email_service import send_newsletter_email
 from app.services.tiptap_renderer import render_tiptap_to_email_html
 from app.services.view_tracking_service import record_view
 from app.models.tag import Tag, ArticleTag
+from app.models import ArticleView
 from app.config import settings
 
 router = APIRouter()
@@ -177,6 +178,61 @@ def create_article_endpoint(
 @router.get("/api/admin/articles", response_model=list[Article], dependencies=[Depends(require_admin)])
 def list_admin_articles_endpoint(session: Session = Depends(get_session)):
     return list_all_articles(session)
+
+@router.get("/api/admin/articles/performance", dependencies=[Depends(require_admin)])
+def get_articles_performance_list(session: Session = Depends(get_session)):
+    from datetime import datetime, timedelta, timezone
+    from app.models.newsletter_send import NewsletterSend as NS
+    
+    articles = session.exec(select(Article)).all()
+
+    results = []
+    for article in articles:
+        total_views = session.exec(
+            select(func.count(ArticleView.id)).where(ArticleView.article_id == article.id)
+        ).first() or 0
+
+        unique_views_24h = session.exec(
+            select(func.count(func.distinct(ArticleView.ip_hash)))
+            .where(ArticleView.article_id == article.id)
+            .where(ArticleView.viewed_at >= datetime.now(timezone.utc) - timedelta(days=1))
+        ).first() or 0
+
+        email_sent = session.exec(
+            select(func.count(NS.id))
+            .where(NS.article_id == article.id)
+            .where(NS.status == "sent")
+        ).first() or 0
+
+        total_opens = session.exec(
+            select(func.sum(NS.open_count))
+            .where(NS.article_id == article.id)
+        ).first() or 0
+
+        total_clicks = session.exec(
+            select(func.sum(NS.click_count))
+            .where(NS.article_id == article.id)
+        ).first() or 0
+
+        open_rate = (int(total_opens) / email_sent * 100) if email_sent > 0 else 0
+        ctr = (int(total_clicks) / email_sent * 100) if email_sent > 0 else 0
+
+        results.append({
+            "id": str(article.id),
+            "title": article.title,
+            "slug": article.slug,
+            "status": article.status,
+            "published_at": article.published_at.isoformat() if article.published_at else None,
+            "total_views": total_views,
+            "unique_views_24h": unique_views_24h,
+            "email_sent": email_sent,
+            "email_opens": int(total_opens),
+            "email_clicks": int(total_clicks),
+            "email_open_rate": round(open_rate, 2),
+            "email_ctr": round(ctr, 2),
+        })
+
+    return results
 
 @router.get("/api/admin/articles/{article_id}", dependencies=[Depends(require_admin)])
 def get_admin_article_endpoint(article_id: UUID, session: Session = Depends(get_session)):
