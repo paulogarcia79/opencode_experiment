@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select, func
 from app.database import get_session
 from app.dependencies import require_admin
-from app.models import Subscriber, NewsletterSend
+from app.models import Subscriber, NewsletterSend, Article, ArticleView
+from app.models.newsletter_send import NewsletterSend as NS
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
+from uuid import UUID
 
 router = APIRouter(prefix="/api/admin/analytics", tags=["analytics"])
 
@@ -147,4 +149,51 @@ def get_analytics(
             "failed": delivery_results.get("failed", 0),
             "pending": delivery_results.get("pending", 0),
         }
+    }
+
+article_analytics_router = APIRouter(prefix="/api/admin/articles/{article_id}/analytics", tags=["article-analytics"])
+
+@article_analytics_router.get("", dependencies=[Depends(require_admin)])
+def get_article_analytics(article_id: UUID, session: Session = Depends(get_session)):
+    article = session.get(Article, article_id)
+    if not article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+
+    total_views = session.exec(
+        select(func.count(ArticleView.id)).where(ArticleView.article_id == article_id)
+    ).first() or 0
+
+    unique_views_24h = session.exec(
+        select(func.count(func.distinct(ArticleView.ip_hash)))
+        .where(ArticleView.article_id == article_id)
+        .where(ArticleView.viewed_at >= datetime.now(timezone.utc) - timedelta(days=1))
+    ).first() or 0
+
+    email_sent = session.exec(
+        select(func.count(NS.id))
+        .where(NS.article_id == article_id)
+        .where(NS.status == "sent")
+    ).first() or 0
+
+    total_opens = session.exec(
+        select(func.sum(NS.open_count))
+        .where(NS.article_id == article_id)
+    ).first() or 0
+
+    total_clicks = session.exec(
+        select(func.sum(NS.click_count))
+        .where(NS.article_id == article_id)
+    ).first() or 0
+
+    open_rate = (int(total_opens) / email_sent * 100) if email_sent > 0 else 0
+    ctr = (int(total_clicks) / email_sent * 100) if email_sent > 0 else 0
+
+    return {
+        "total_views": total_views,
+        "unique_views_24h": unique_views_24h,
+        "email_sent": email_sent,
+        "email_opens": int(total_opens),
+        "email_clicks": int(total_clicks),
+        "email_open_rate": round(open_rate, 2),
+        "email_ctr": round(ctr, 2),
     }

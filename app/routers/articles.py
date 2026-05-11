@@ -27,6 +27,7 @@ from app.services.search_service import search_articles
 from app.services.tag_service import get_or_create_tags
 from app.services.email_service import send_newsletter_email
 from app.services.tiptap_renderer import render_tiptap_to_email_html
+from app.services.view_tracking_service import record_view
 from app.models.tag import Tag, ArticleTag
 from app.config import settings
 
@@ -52,6 +53,9 @@ def get_article_endpoint(slug: str, session: Session = Depends(get_session)):
     article = get_article_by_slug(session, slug)
     if not article or article.status != "published":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+    record_view(session, article.id, "127.0.0.1")
+    session.commit()
+    session.refresh(article)
     response = article.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
     return response

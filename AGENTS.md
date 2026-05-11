@@ -6,14 +6,44 @@ A **Blog + Newsletter Platform** with a real application stack: FastAPI backend,
 
 ## Implementation Flow (User-Mandated)
 
+**CRITICAL: Never skip steps. Never jump from planning directly to implementation.**
+
 Always follow this sequence for new features:
 
-1. **`/grill-me [feature]`** — Stress-test the plan with the user until decisions crystallize
+1. **`/grill-me [feature]`** or **`/grill-with-docs`** — Stress-test the plan with the user until decisions crystallize
+   - **DO NOT implement code, create files, or make changes during this phase**
+   - Ask questions one at a time, resolve design decisions, explore codebase
+   - Capture resolved decisions as you go
+   - When grilling is complete, proceed to step 2
+
 2. **`/to-prd`** — Convert the grilled plan into a PRD and publish to `prd/PRD-<name>.md`
+   - Use the resolved decisions from the grilling session as input
+   - Wait for user review and approval before proceeding
+
 3. **`/to-issues`** — Break the PRD into independently-grabbable issues (tracer-bullet vertical slices)
+   - Issues are created in `issues/<number>-<name>.md`
+   - Each issue should be independently implementable
+
 4. **TDD** — Write tests before logic (pytest backend, Vitest frontend)
+   - Use the **Ralph loop** (`./ralph/once.sh`) for autonomous implementation, OR the **`/tdd`** skill for manual implementation
+   - Only now do you start implementing code
+   - Pick issues from `issues/` and work through them
+
 5. **`/qa-checklist`** — After implementation, generate a manual QA checklist from the PRD, issues, tests, and code
-6. **Ralph loop** — Autonomous iteration: `ralph/once.sh` picks the next AFK issue, implements with TDD, runs feedback loops, commits
+   - This is ALWAYS the final step before commit
+   - User must review and approve the QA checklist
+
+6. **Commit changes** — After QA checklist approval, commit the implementation
+   - Follow git safety protocols (never force push, never skip hooks)
+
+### Workflow Enforcement Rules
+
+- **Grilling is planning only.** If you catch yourself writing implementation code during a grilling session, stop immediately.
+- **No direct implementation from grilling.** The sequence grill → PRD → issues → implementation is mandatory.
+- **Wait for user approval.** After `/to-prd` publishes the PRD, wait for the user to review before running `/to-issues`.
+- **Issues must exist before implementation.** Do not implement features that don't have a corresponding issue in `issues/`.
+- **QA checklist is mandatory.** Always run `/qa-checklist` after implementation and wait for user approval before committing.
+- **Never commit without approval.** Only commit changes after the user approves the QA checklist.
 
 ## Tech Stack
 
@@ -82,6 +112,12 @@ openspec list --json
 - **In explore mode (`/opsx-explore`), NEVER write application code.** OpenSpec artifacts only.
 - **Always read `contextFiles` from `openspec instructions apply --json`** before implementing. Do not assume artifact filenames.
 - **Keep changes minimal and scoped** to the current task.
+- **During grilling sessions (`/grill-me` or `/grill-with-docs`):**
+  - NEVER write application code, create files, or make changes
+  - Ask questions one at a time, waiting for user feedback
+  - Explore the codebase to answer questions instead of guessing
+  - Capture resolved decisions as you go for use in `/to-prd`
+  - When grilling concludes, run `/to-prd` next — do NOT implement
 
 ## Artifact Locations
 
