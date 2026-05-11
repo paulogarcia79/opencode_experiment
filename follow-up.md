@@ -18,7 +18,7 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 - [x] **Tags and categories** — Taxonomy system for organizing articles (flat many-to-many tags with hybrid autocomplete input, tag pages, admin management, tag-aware search)
 - [x] **Scheduled publishing** — Publish articles at a future date/time (Integrated with ARQ background queue)
 - [x] **Auto-save drafts** — Periodic auto-save while editing to prevent data loss (2s debounce + 30s heartbeat, retry with exponential backoff, new-article creation with deferral)
-- [ ] **Revision history** — Track and restore previous versions of articles
+- [x] **Revision history** — Track and restore previous versions of articles (ArticleRevision model with full snapshot on explicit save/publish, slide-out panel with character/word-level diff view, restore with confirmation, auto-save excluded, tags restored/cleared correctly)
 - [ ] **Markdown import** — Import articles from Markdown files
 - [ ] **Article series / collections** — Group related articles into numbered series
 
