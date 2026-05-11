@@ -37,7 +37,7 @@ def _make_open_event(send_id: str, svix_id: str = None) -> dict:
         "type": "email.opened",
         "created_at": "2026-05-11T00:00:00.000Z",
         "data": {
-            "tags": {"newsletter_send_id": send_id},
+            "tags": [{"name": "newsletter_send_id", "value": send_id}],
         },
     }
     if svix_id:
@@ -95,7 +95,7 @@ class TestWebhookSignatureVerification:
 
         resp = client.post(
             "/api/webhooks/resend",
-            json={"type": "email.opened", "data": {"tags": {}}},
+            json={"type": "email.opened", "data": {"tags": []}},
             headers={
                 "svix-id": "msg_test123",
                 "svix-timestamp": "1700000000",
@@ -110,7 +110,7 @@ class TestWebhookSignatureVerification:
 
         resp = client.post(
             "/api/webhooks/resend",
-            json={"type": "email.opened", "data": {"tags": {}}},
+            json={"type": "email.opened", "data": {"tags": []}},
         )
         assert resp.status_code == 401
 
@@ -120,7 +120,7 @@ class TestWebhookSignatureVerification:
 
         resp = client.post(
             "/api/webhooks/resend",
-            json={"type": "email.opened", "data": {"tags": {"newsletter_send_id": str(uuid.uuid4())}}},
+            json={"type": "email.opened", "data": {"tags": [{"name": "newsletter_send_id", "value": str(uuid.uuid4())}]}},
         )
         # Should not be 401 - either 200 or some other processing result
         assert resp.status_code != 401
@@ -133,7 +133,7 @@ class TestBounceHandling:
             "created_at": "2026-05-11T00:00:00.000Z",
             "data": {
                 "to": [email or "test@example.com"],
-                "tags": {"newsletter_send_id": send_id},
+                "tags": [{"name": "newsletter_send_id", "value": send_id}],
                 "bounce": {
                     "type": bounce_type,
                     "subType": "Suppressed",
@@ -182,7 +182,7 @@ class TestBounceHandling:
 
 class TestComplaintHandling:
     def test_complaint_unsubscribes_subscriber(self, client: TestClient, session: Session):
-        """Complaint event sets subscriber status to unsubscribed."""
+        """Complaint events set subscriber status to unsubscribed."""
         sub = _create_test_subscriber(session)
         send = _create_test_send(session, sub)
 
@@ -191,7 +191,7 @@ class TestComplaintHandling:
             "created_at": "2026-05-11T00:00:00.000Z",
             "data": {
                 "to": [sub.email],
-                "tags": {"newsletter_send_id": str(send.id)},
+                "tags": [{"name": "newsletter_send_id", "value": str(send.id)}],
             },
             "svix_id": "msg_complaint_1",
         }
@@ -205,3 +205,66 @@ class TestComplaintHandling:
         session.refresh(send)
         assert send.status == "failed"
         assert send.error_message == "Complained"
+
+
+class TestOpenClickTracking:
+    def test_open_event_increments_open_count(self, client: TestClient, session: Session):
+        """email.opened webhook increments open_count and sets opened_at."""
+        sub = _create_test_subscriber(session)
+        send = _create_test_send(session, sub)
+
+        event = _make_open_event(str(send.id), svix_id="msg_open_1")
+
+        resp = client.post("/api/webhooks/resend", json=event)
+        assert resp.status_code == 200
+
+        session.refresh(send)
+        assert send.open_count == 1
+        assert send.opened_at is not None
+
+    def test_click_event_increments_click_count(self, client: TestClient, session: Session):
+        """email.clicked webhook increments click_count and sets clicked_at."""
+        sub = _create_test_subscriber(session)
+        send = _create_test_send(session, sub)
+
+        event = {
+            "type": "email.clicked",
+            "created_at": "2026-05-11T00:00:00.000Z",
+            "data": {
+                "tags": [{"name": "newsletter_send_id", "value": str(send.id)}],
+            },
+            "svix_id": "msg_click_1",
+        }
+
+        resp = client.post("/api/webhooks/resend", json=event)
+        assert resp.status_code == 200
+
+        session.refresh(send)
+        assert send.click_count == 1
+        assert send.clicked_at is not None
+
+    def test_multiple_opens_and_clicks(self, client: TestClient, session: Session):
+        """Multiple open and click events accumulate correctly."""
+        sub = _create_test_subscriber(session)
+        send = _create_test_send(session, sub)
+
+        for i in range(3):
+            open_event = _make_open_event(str(send.id), svix_id=f"msg_open_{i}")
+            resp = client.post("/api/webhooks/resend", json=open_event)
+            assert resp.status_code == 200
+
+        for i in range(2):
+            click_event = {
+                "type": "email.clicked",
+                "created_at": "2026-05-11T00:00:00.000Z",
+                "data": {
+                    "tags": [{"name": "newsletter_send_id", "value": str(send.id)}],
+                },
+                "svix_id": f"msg_click_{i}",
+            }
+            resp = client.post("/api/webhooks/resend", json=click_event)
+            assert resp.status_code == 200
+
+        session.refresh(send)
+        assert send.open_count == 3
+        assert send.click_count == 2

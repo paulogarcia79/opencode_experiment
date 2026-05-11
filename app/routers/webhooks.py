@@ -63,10 +63,17 @@ async def resend_webhook(request: Request, session: Session = Depends(get_sessio
                 logger.info(f"Skipping duplicate event: {svix_id}")
                 continue
         
-        # We'll use tags or headers to find our newsletter_send_id
-        # For now, let's assume we pass it in 'tags'
-        tags = data.get("tags", {})
-        send_id_str = tags.get("newsletter_send_id")
+        # Resend sends tags as a list of {name, value} objects
+        tags_list = data.get("tags", [])
+        send_id_str = None
+        if isinstance(tags_list, list):
+            for tag in tags_list:
+                if isinstance(tag, dict) and tag.get("name") == "newsletter_send_id":
+                    send_id_str = tag.get("value")
+                    break
+        elif isinstance(tags_list, dict):
+            # Fallback for dict format
+            send_id_str = tags_list.get("newsletter_send_id")
         
         if not send_id_str:
             # Fallback: check metadata or other fields if needed
