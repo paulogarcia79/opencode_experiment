@@ -53,7 +53,8 @@ def search_articles_endpoint(request: Request, q: Optional[str] = None, session:
     return search_articles(session, q.strip())
 
 @router.get("/api/articles/{slug}")
-def get_article_endpoint(slug: str, session: Session = Depends(get_session)):
+@limiter.limit(settings.RATE_LIMIT_ARTICLE_VIEW)
+def get_article_endpoint(request: Request, slug: str, session: Session = Depends(get_session)):
     article = get_article_by_slug(session, slug)
     if not article or article.status != "published":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")

@@ -262,3 +262,81 @@ class TestSubscribeRateLimit:
         assert "Try again in" in data["detail"]
         assert response2.headers.get("Retry-After") is not None
         assert int(response2.headers["Retry-After"]) > 0
+
+
+class TestArticleViewRateLimit:
+    """Test rate limiting on the article view endpoint."""
+
+    def _create_test_app_with_article_view(self, limit: str = "2/minute"):
+        """Create a test FastAPI app with article view endpoint and rate limiting using MemoryStorage."""
+        from fastapi import FastAPI
+        from slowapi import Limiter
+        from slowapi.errors import RateLimitExceeded
+        from slowapi.middleware import SlowAPIMiddleware
+        from starlette.requests import Request
+        from starlette.responses import JSONResponse
+
+        limiter = Limiter(
+            key_func=lambda: "test_client",
+            storage_uri="memory://",
+        )
+
+        app = FastAPI()
+
+        @app.exception_handler(RateLimitExceeded)
+        async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+            retry_after = exc.limit.limit.get_expiry()
+            return JSONResponse(
+                status_code=429,
+                content={"detail": f"Rate limit exceeded. Try again in {retry_after} seconds."},
+                headers={"Retry-After": str(retry_after)},
+            )
+
+        @app.get("/api/articles/{slug}")
+        @limiter.limit(limit)
+        async def article_view_endpoint(request: Request, slug: str):
+            return {"slug": slug, "title": f"Article: {slug}"}
+
+        app.state.limiter = limiter
+        app.add_middleware(SlowAPIMiddleware)
+
+        return app
+
+    def test_article_view_rate_limit_enforced(self):
+        """Article view requests beyond the limit should return 429."""
+        app = self._create_test_app_with_article_view(limit="2/minute")
+        client = TestClient(app)
+
+        # First 2 requests should succeed
+        response1 = client.get("/api/articles/test-article")
+        assert response1.status_code == 200
+
+        response2 = client.get("/api/articles/test-article")
+        assert response2.status_code == 200
+
+        # 3rd request should be rate limited
+        response3 = client.get("/api/articles/test-article")
+        assert response3.status_code == 429
+        data = response3.json()
+        assert "Rate limit exceeded" in data["detail"]
+        assert "Retry-After" in response3.headers
+
+    def test_article_view_rate_limit_response_format(self):
+        """Article view rate limit response should have correct JSON format and Retry-After header."""
+        app = self._create_test_app_with_article_view(limit="1/minute")
+        client = TestClient(app)
+
+        # First request succeeds
+        response1 = client.get("/api/articles/test-article")
+        assert response1.status_code == 200
+
+        # Second request is rate limited
+        response2 = client.get("/api/articles/test-article")
+        assert response2.status_code == 429
+
+        data = response2.json()
+        assert "detail" in data
+        assert "Rate limit exceeded" in data["detail"]
+        assert "Try again in" in data["detail"]
+        assert response2.headers.get("Retry-After") is not None
+        assert int(response2.headers["Retry-After"]) > 0
