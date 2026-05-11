@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
+from starlette.requests import Request
 from app.database import get_session
 from app.schemas import SubscribeRequest
 from app.dependencies import get_arq_pool
@@ -9,11 +10,15 @@ from app.services.subscriber_service import (
     confirm_subscriber,
     unsubscribe_subscriber,
 )
+from app.limiter import limiter
+from app.config import settings
 
 router = APIRouter()
 
 @router.post("/api/subscribers")
+@limiter.limit(settings.RATE_LIMIT_SUBSCRIBE)
 async def subscribe_endpoint(
+    request: Request,
     data: SubscribeRequest, 
     session: Session = Depends(get_session),
     arq_pool: ArqRedis = Depends(get_arq_pool)

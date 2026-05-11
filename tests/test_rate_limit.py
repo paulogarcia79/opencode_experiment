@@ -180,3 +180,85 @@ class TestSearchRateLimit:
         assert "Try again in" in data["detail"]
         assert response2.headers.get("Retry-After") is not None
         assert int(response2.headers["Retry-After"]) > 0
+
+
+class TestSubscribeRateLimit:
+    """Test rate limiting on the subscribe endpoint."""
+
+    def _create_test_app_with_subscribe(self, limit: str = "2/minute"):
+        """Create a test FastAPI app with subscribe endpoint and rate limiting using MemoryStorage."""
+        from fastapi import FastAPI
+        from slowapi import Limiter
+        from slowapi.errors import RateLimitExceeded
+        from slowapi.middleware import SlowAPIMiddleware
+        from starlette.requests import Request
+        from starlette.responses import JSONResponse
+        from pydantic import BaseModel
+
+        limiter = Limiter(
+            key_func=lambda: "test_client",
+            storage_uri="memory://",
+        )
+
+        app = FastAPI()
+
+        @app.exception_handler(RateLimitExceeded)
+        async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+            retry_after = exc.limit.limit.get_expiry()
+            return JSONResponse(
+                status_code=429,
+                content={"detail": f"Rate limit exceeded. Try again in {retry_after} seconds."},
+                headers={"Retry-After": str(retry_after)},
+            )
+
+        class SubscribeRequest(BaseModel):
+            email: str
+
+        @app.post("/api/subscribers")
+        @limiter.limit(limit)
+        async def subscribe_endpoint(request: Request, data: SubscribeRequest):
+            return {"message": "Check your email to confirm your subscription."}
+
+        app.state.limiter = limiter
+        app.add_middleware(SlowAPIMiddleware)
+
+        return app
+
+    def test_subscribe_rate_limit_enforced(self):
+        """Subscribe requests beyond the limit should return 429."""
+        app = self._create_test_app_with_subscribe(limit="2/minute")
+        client = TestClient(app)
+
+        # First 2 requests should succeed
+        response1 = client.post("/api/subscribers", json={"email": "test1@example.com"})
+        assert response1.status_code == 200
+
+        response2 = client.post("/api/subscribers", json={"email": "test2@example.com"})
+        assert response2.status_code == 200
+
+        # 3rd request should be rate limited
+        response3 = client.post("/api/subscribers", json={"email": "test3@example.com"})
+        assert response3.status_code == 429
+        data = response3.json()
+        assert "Rate limit exceeded" in data["detail"]
+        assert "Retry-After" in response3.headers
+
+    def test_subscribe_rate_limit_response_format(self):
+        """Subscribe rate limit response should have correct JSON format and Retry-After header."""
+        app = self._create_test_app_with_subscribe(limit="1/minute")
+        client = TestClient(app)
+
+        # First request succeeds
+        response1 = client.post("/api/subscribers", json={"email": "test@example.com"})
+        assert response1.status_code == 200
+
+        # Second request is rate limited
+        response2 = client.post("/api/subscribers", json={"email": "test2@example.com"})
+        assert response2.status_code == 429
+
+        data = response2.json()
+        assert "detail" in data
+        assert "Rate limit exceeded" in data["detail"]
+        assert "Try again in" in data["detail"]
+        assert response2.headers.get("Retry-After") is not None
+        assert int(response2.headers["Retry-After"]) > 0
