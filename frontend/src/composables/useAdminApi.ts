@@ -120,3 +120,48 @@ export async function resetPassword(token: string, newPassword: string) {
   }
   return res.json()
 }
+
+export interface RevisionListItem {
+  version_number: number
+  change_type: string
+  title: string
+  created_at: string
+}
+
+export interface Revision {
+  version_number: number
+  change_type: string
+  title: string
+  content: Record<string, unknown>
+  description: string | null
+  tag_names: string[]
+  created_at: string
+}
+
+export async function fetchRevisions(articleId: string): Promise<RevisionListItem[]> {
+  const res = await fetch(`${API_BASE}/api/admin/articles/${articleId}/revisions`, {
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch revisions')
+  return res.json()
+}
+
+export async function fetchRevision(articleId: string, versionNumber: number): Promise<Revision> {
+  const res = await fetch(`${API_BASE}/api/admin/articles/${articleId}/revisions/${versionNumber}`, {
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch revision')
+  return res.json()
+}
+
+export async function restoreRevision(articleId: string, versionNumber: number) {
+  const res = await fetch(`${API_BASE}/api/admin/articles/${articleId}/revisions/${versionNumber}/restore`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Failed to restore revision')
+  }
+  return res.json()
+}

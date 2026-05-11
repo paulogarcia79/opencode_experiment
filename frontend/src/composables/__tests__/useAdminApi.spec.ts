@@ -11,6 +11,9 @@ import {
   fetchAdminImages,
   deleteImage,
   sendPreviewEmail,
+  fetchRevisions,
+  fetchRevision,
+  restoreRevision,
 } from '@/composables/useAdminApi'
 import { useAdminStore } from '@/stores/admin'
 
@@ -325,6 +328,102 @@ describe('sendPreviewEmail', () => {
     )
 
     await expect(sendPreviewEmail('1')).rejects.toThrow('Article not found')
+    vi.restoreAllMocks()
+  })
+})
+
+describe('fetchRevisions', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('fetches revisions with auth headers on success', async () => {
+    const mockData = [{ version_number: 1, change_type: 'save', title: 'V1', created_at: '2025-01-15T09:00:00' }]
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    )
+
+    const result = await fetchRevisions('1')
+
+    expect(result).toEqual(mockData)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/admin/articles/1/revisions',
+      expect.objectContaining({ headers: expect.any(Object) })
+    )
+    fetchSpy.mockRestore()
+  })
+
+  it('throws on error response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('Not Found', { status: 404 })
+    )
+
+    await expect(fetchRevisions('1')).rejects.toThrow('Failed to fetch revisions')
+    vi.restoreAllMocks()
+  })
+})
+
+describe('fetchRevision', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('fetches single revision on success', async () => {
+    const mockData = { version_number: 1, change_type: 'save', title: 'V1', content: {}, description: null, tag_names: [], created_at: '2025-01-15T09:00:00' }
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    )
+
+    const result = await fetchRevision('1', 1)
+
+    expect(result).toEqual(mockData)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/admin/articles/1/revisions/1',
+      expect.objectContaining({ headers: expect.any(Object) })
+    )
+    fetchSpy.mockRestore()
+  })
+
+  it('throws on error response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('Not Found', { status: 404 })
+    )
+
+    await expect(fetchRevision('1', 1)).rejects.toThrow('Failed to fetch revision')
+    vi.restoreAllMocks()
+  })
+})
+
+describe('restoreRevision', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('restores revision with POST on success', async () => {
+    const mockData = { id: '1', title: 'Restored' }
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    )
+
+    const result = await restoreRevision('1', 1)
+
+    expect(result).toEqual(mockData)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/admin/articles/1/revisions/1/restore',
+      expect.objectContaining({ method: 'POST', headers: expect.any(Object) })
+    )
+    fetchSpy.mockRestore()
+  })
+
+  it('throws extracted error detail on error response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'Revision not found' }), { status: 404 })
+    )
+
+    await expect(restoreRevision('1', 999)).rejects.toThrow('Revision not found')
     vi.restoreAllMocks()
   })
 })

@@ -72,3 +72,24 @@ class TagRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+class RevisionListRead(BaseModel):
+    version_number: int
+    change_type: str
+    title: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class RevisionRead(BaseModel):
+    version_number: int
+    change_type: str
+    title: str
+    content: dict
+    description: Optional[str] = None
+    tag_names: List[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

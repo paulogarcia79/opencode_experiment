@@ -6,8 +6,8 @@ from sqlmodel import Session
 from app.database import get_session
 from app.dependencies import require_admin, get_arq_pool
 from arq.connections import ArqRedis
-from app.models import Article, NewsletterSend, Tag, ArticleTag
-from app.schemas import ArticleCreate, ArticleUpdate, ArticleAutoSave, TagRead
+from app.models import Article, NewsletterSend, Tag, ArticleTag, ArticleRevision
+from app.schemas import ArticleCreate, ArticleUpdate, ArticleAutoSave, TagRead, RevisionListRead, RevisionRead
 from app.services.article_service import (
     create_article,
     get_article_by_slug,
@@ -15,6 +15,12 @@ from app.services.article_service import (
     list_all_articles,
     update_article,
     delete_article,
+)
+from app.services.revision_service import (
+    list_revisions,
+    get_revision,
+    create_revision,
+    restore_revision,
 )
 from app.services.newsletter_service import send_newsletter_for_article
 from app.services.search_service import search_articles
@@ -189,16 +195,20 @@ async def update_article_endpoint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
     
     should_send_newsletter = False
+    change_type = "save"
     
     if data.status == "published" and article.status == "draft":
         from datetime import datetime, timezone
         article.published_at = datetime.now(timezone.utc)
         should_send_newsletter = article.send_newsletter if data.send_newsletter is None else data.send_newsletter
+        change_type = "publish"
     elif data.status == "draft" and article.status == "published":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot unpublish an article",
         )
+    
+    create_revision(session, article, change_type)
     
     update_data = {}
     if data.title is not None:
@@ -338,6 +348,35 @@ def preview_email_endpoint(article_id: UUID, session: Session = Depends(get_sess
             detail=f"Failed to send preview email: {str(e)}"
         )
     return {"message": "Preview sent successfully"}
+
+@router.get("/api/admin/articles/{article_id}/revisions", response_model=list[RevisionListRead], dependencies=[Depends(require_admin)])
+def list_article_revisions_endpoint(article_id: UUID, session: Session = Depends(get_session)):
+    article = session.get(Article, article_id)
+    if not article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+    return list_revisions(session, article_id)
+
+@router.get("/api/admin/articles/{article_id}/revisions/{version_number}", response_model=RevisionRead, dependencies=[Depends(require_admin)])
+def get_article_revision_endpoint(article_id: UUID, version_number: int, session: Session = Depends(get_session)):
+    article = session.get(Article, article_id)
+    if not article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+    revision = get_revision(session, article_id, version_number)
+    if not revision:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+    return revision
+
+@router.post("/api/admin/articles/{article_id}/revisions/{version_number}/restore", dependencies=[Depends(require_admin)])
+def restore_article_revision_endpoint(article_id: UUID, version_number: int, session: Session = Depends(get_session)):
+    article = session.get(Article, article_id)
+    if not article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+    restored = restore_revision(session, article, version_number)
+    if not restored:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+    response = restored.model_dump()
+    response["tags"] = [TagRead.model_validate(t).model_dump() for t in restored.tags]
+    return response
 
 @router.get("/api/admin/newsletter-blasts/{article_id}/status", dependencies=[Depends(require_admin)])
 def get_newsletter_blast_status_endpoint(article_id: UUID, session: Session = Depends(get_session)):

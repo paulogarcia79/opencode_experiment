@@ -111,6 +111,17 @@
           <span v-if="previewing">Sending...</span>
           <span v-else>Send Preview</span>
         </button>
+        <button
+          v-if="isEditing"
+          type="button"
+          @click="showHistory = true"
+          class="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg border border-white/10 transition-all duration-200 cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          History
+        </button>
         <RouterLink
           to="/admin"
           class="px-6 py-2.5 border border-white/10 text-sm font-medium text-slate-400 rounded-lg hover:bg-white/5 hover:text-white transition-all duration-200 cursor-pointer"
@@ -183,6 +194,14 @@
         </div>
       </div>
     </form>
+
+    <RevisionPanel
+      :is-open="showHistory"
+      :article-id="articleId || ''"
+      :current-article="currentArticleForHistory"
+      @close="showHistory = false"
+      @restored="handleRestored"
+    />
   </div>
 </template>
 
@@ -191,6 +210,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TipTapEditor from '@/components/TipTapEditor.vue'
 import TagInput from '@/components/TagInput.vue'
+import RevisionPanel from '@/components/RevisionPanel.vue'
 import { createArticle, updateArticle, fetchAdminArticle, sendPreviewEmail } from '@/composables/useAdminApi'
 import { useAutoSave } from '@/composables/useAutoSave'
 
@@ -213,6 +233,14 @@ const submitting = ref(false)
 const previewing = ref(false)
 const editorKey = ref(0)
 const articleId = ref<string | null>(null)
+const showHistory = ref(false)
+
+const currentArticleForHistory = computed(() => ({
+  title: form.value.title,
+  description: form.value.description,
+  content: form.value.content as Record<string, unknown>,
+  tags: form.value.tags,
+}))
 
 const autosaveForm = computed(() => ({
   title: form.value.title,
@@ -300,5 +328,16 @@ async function handleSendPreview() {
   } finally {
     previewing.value = false
   }
+}
+
+async function handleRestored(article: unknown) {
+  const a = article as Record<string, unknown>
+  form.value.title = a.title as string
+  form.value.description = (a.description as string) || ''
+  form.value.content = (a.content as { type: string; content: { type: string }[] }) || { type: 'doc', content: [{ type: 'paragraph' }] }
+  form.value.tags = (a.tags as { name: string; slug: string }[]) || []
+  showHistory.value = false
+  state.value = 'success'
+  message.value = 'Article restored to previous version.'
 }
 </script>
