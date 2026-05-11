@@ -39,5 +39,12 @@ async def require_admin(
             detail="Could not validate credentials",
         )
     
+    jwt_token_version = payload.get("token_version")
+    if jwt_token_version is not None and jwt_token_version != user.token_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+    
     # In this system, any valid user is an admin for now based on the PRD
     return user

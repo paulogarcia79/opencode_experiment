@@ -39,5 +39,5 @@ def admin_token_fixture(session: Session) -> dict:
     from sqlmodel import select
     from app.services.auth_service import create_access_token
     admin = session.exec(select(User)).first()
-    token = create_access_token(data={"sub": str(admin.id)})
+    token = create_access_token(data={"sub": str(admin.id), "token_version": admin.token_version})
     return {"Authorization": f"Bearer {token}"}

@@ -21,5 +21,5 @@ def login(request: LoginRequest, session: Session = Depends(get_session)):
             detail="Incorrect email or password",
         )
     
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user.id), "token_version": user.token_version})
     return {"token": access_token, "type": "bearer"}
