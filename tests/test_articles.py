@@ -111,6 +111,36 @@ def test_delete_article(client: TestClient, session, admin_token):
     response = client.delete(f"/api/articles/{article.id}", headers=admin_token)
     assert response.status_code == 204
 
+def test_delete_article_with_newsletter_sends(client: TestClient, session, admin_token):
+    """Deleting an article with associated newsletter sends should not raise FK violation."""
+    from app.services.article_service import create_article, update_article
+    from app.models.newsletter_send import NewsletterSend
+    from app.models.article_view import ArticleView
+    from datetime import datetime, timezone
+    import uuid
+    
+    article = create_article(session, "With Sends", {"type": "doc"})
+    update_article(session, article, status="published", published_at=datetime.now(timezone.utc))
+    
+    # Create related records
+    send = NewsletterSend(
+        article_id=article.id,
+        subscriber_id=uuid.uuid4(),
+        status="sent",
+        open_count=1,
+        click_count=0,
+    )
+    session.add(send)
+    view = ArticleView(
+        article_id=article.id,
+        ip_hash="test_hash",
+    )
+    session.add(view)
+    session.commit()
+    
+    response = client.delete(f"/api/articles/{article.id}", headers=admin_token)
+    assert response.status_code == 204
+
 def test_article_crud_unauthorized(client: TestClient, admin_token):
     response = client.post("/api/admin/articles", json={"title": "Test", "content": {}})
     assert response.status_code == 401

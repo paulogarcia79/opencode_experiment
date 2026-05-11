@@ -104,5 +104,18 @@ def update_article(session: Session, article: Article, **kwargs) -> Article:
     ).first()
 
 def delete_article(session: Session, article: Article) -> None:
+    from app.models.article_revision import ArticleRevision
+    from app.models.article_view import ArticleView
+    from app.models.newsletter_send import NewsletterSend
+
+    # Delete related records first (for existing DBs without CASCADE)
+    for rev in session.exec(select(ArticleRevision).where(ArticleRevision.article_id == article.id)):
+        session.delete(rev)
+    for view in session.exec(select(ArticleView).where(ArticleView.article_id == article.id)):
+        session.delete(view)
+    for send in session.exec(select(NewsletterSend).where(NewsletterSend.article_id == article.id)):
+        session.delete(send)
+    session.commit()
+
     session.delete(article)
     session.commit()

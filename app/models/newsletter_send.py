@@ -7,7 +7,7 @@ class NewsletterSend(SQLModel, table=True):
     __tablename__ = "newsletter_sends"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    article_id: uuid.UUID = Field(foreign_key="articles.id", nullable=False)
+    article_id: uuid.UUID = Field(foreign_key="articles.id", ondelete="CASCADE", nullable=False)
     subscriber_id: uuid.UUID = Field(foreign_key="subscribers.id", nullable=False)
     status: str = Field(default="pending", nullable=False)
     error_message: Optional[str] = Field(default=None, nullable=True)
