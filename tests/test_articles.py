@@ -213,7 +213,7 @@ def test_preview_email_endpoint(client: TestClient, session, admin_token):
     
     article = create_article(session, "Preview Test", {"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Preview content"}]}]})
     
-    with patch('app.routers.articles.send_newsletter_email') as mock_send:
+    with patch('app.services.email_service.send_newsletter_email') as mock_send:
         response = client.post(f"/api/admin/articles/{article.id}/preview-email", headers=admin_token)
         
     assert response.status_code == 200

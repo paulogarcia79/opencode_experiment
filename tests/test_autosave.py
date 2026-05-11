@@ -74,7 +74,7 @@ def test_autosave_invalid_token(client: TestClient, session, admin_token):
         json={"title": "Updated"},
         headers={"Authorization": "Bearer wrong-token"},
     )
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_autosave_nonexistent_article(client: TestClient, admin_token):

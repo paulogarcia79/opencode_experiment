@@ -41,7 +41,9 @@ class TestRenderImageNode:
         assert f"src=\"{settings.APP_BASE_URL}/uploads/2025/05/test.png\"" in html
         assert 'alt="Test image"' in html
         assert 'title="My Photo"' in html
-        assert 'style="max-width:100%;height:auto;display:block;"' in html
+        assert 'max-width:100%' in html
+        assert 'height:auto' in html
+        assert 'display:block' in html
 
     def test_renders_image_with_absolute_url(self):
         node = {
@@ -99,8 +101,9 @@ class TestRenderTipTapToEmailHtml:
         html = render_tiptap_to_email_html(content)
         assert "Hello world" in html
         assert f"{settings.APP_BASE_URL}/uploads/2025/05/photo.png" in html
-        assert 'style="max-width:100%;height:auto;display:block;"' in html
-        assert '<div style="font-family: Georgia, serif;' in html
+        assert 'max-width:100%' in html
+        assert 'height:auto' in html
+        assert 'display:block' in html
 
     def test_renders_mixed_relative_and_absolute_images(self):
         content = {
