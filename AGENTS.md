@@ -25,7 +25,7 @@ Always follow this sequence for new features:
    - Each issue should be independently implementable
 
 4. **TDD** — Write tests before logic (pytest backend, Vitest frontend)
-   - Use the **Ralph loop** (`./ralph/once.sh`) for autonomous implementation, OR the **`/tdd`** skill for manual implementation
+   - Use the **Ralph loop** (`./ralph/afk.sh`) for autonomous implementation, OR the **`/tdd`** skill for manual implementation
    - Only now do you start implementing code
    - Pick issues from `issues/` and work through them
 
