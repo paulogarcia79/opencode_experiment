@@ -113,6 +113,18 @@ async def resend_webhook(request: Request, session: Session = Depends(get_sessio
                                 sub.status = "unsubscribed"
                                 session.add(sub)
                                 logger.info(f"Unsubscribed {email_addr} due to permanent bounce")
+                elif event_type == "email.complained":
+                    send_record.status = "failed"
+                    send_record.error_message = "Complained"
+                    
+                    # Unsubscribe on complaint
+                    recipient_emails = data.get("to", [])
+                    for email_addr in recipient_emails:
+                        sub = session.exec(select(Subscriber).where(Subscriber.email == email_addr)).first()
+                        if sub and sub.status != "unsubscribed":
+                            sub.status = "unsubscribed"
+                            session.add(sub)
+                            logger.info(f"Unsubscribed {email_addr} due to complaint")
                 
                 session.add(send_record)
                 

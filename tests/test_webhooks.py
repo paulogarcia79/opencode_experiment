@@ -178,3 +178,30 @@ class TestBounceHandling:
         session.refresh(send)
         assert send.status == "failed"
         assert "Transient" in send.error_message
+
+
+class TestComplaintHandling:
+    def test_complaint_unsubscribes_subscriber(self, client: TestClient, session: Session):
+        """Complaint event sets subscriber status to unsubscribed."""
+        sub = _create_test_subscriber(session)
+        send = _create_test_send(session, sub)
+
+        event = {
+            "type": "email.complained",
+            "created_at": "2026-05-11T00:00:00.000Z",
+            "data": {
+                "to": [sub.email],
+                "tags": {"newsletter_send_id": str(send.id)},
+            },
+            "svix_id": "msg_complaint_1",
+        }
+
+        resp = client.post("/api/webhooks/resend", json=event)
+        assert resp.status_code == 200
+
+        session.refresh(sub)
+        assert sub.status == "unsubscribed"
+
+        session.refresh(send)
+        assert send.status == "failed"
+        assert send.error_message == "Complained"
