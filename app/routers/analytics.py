@@ -85,6 +85,41 @@ def get_analytics(
     open_rate = (total_opens / total_sent * 100) if total_sent > 0 else 0
     ctr = (total_clicks / total_sent * 100) if total_sent > 0 else 0
 
+    # 5. Bounce & Complaint Stats
+    total_bounces = session.exec(
+        select(func.count(NewsletterSend.id))
+        .where(NewsletterSend.created_at >= start_date)
+        .where(NewsletterSend.status == "failed")
+        .where(NewsletterSend.error_message.like("Bounced%"))
+    ).first() or 0
+
+    total_complaints = session.exec(
+        select(func.count(NewsletterSend.id))
+        .where(NewsletterSend.created_at >= start_date)
+        .where(NewsletterSend.status == "failed")
+        .where(NewsletterSend.error_message == "Complained")
+    ).first() or 0
+
+    bounce_rate = (total_bounces / total_sent * 100) if total_sent > 0 else 0
+    complaint_rate = (total_complaints / total_sent * 100) if total_sent > 0 else 0
+
+    # Bounce & Complaint time-series
+    bounces_ts = session.exec(
+        select(date_func_ns, func.count(NewsletterSend.id))
+        .where(NewsletterSend.created_at >= start_date)
+        .where(NewsletterSend.status == "failed")
+        .where(NewsletterSend.error_message.like("Bounced%"))
+        .group_by(date_func_ns)
+    ).all()
+
+    complaints_ts = session.exec(
+        select(date_func_ns, func.count(NewsletterSend.id))
+        .where(NewsletterSend.created_at >= start_date)
+        .where(NewsletterSend.status == "failed")
+        .where(NewsletterSend.error_message == "Complained")
+        .group_by(date_func_ns)
+    ).all()
+
     return {
         "summary": {
             "total_active": total_active,
@@ -92,14 +127,20 @@ def get_analytics(
             "total_unsubscribed": total_unsubscribed,
             "total_opens": int(total_opens),
             "total_clicks": int(total_clicks),
+            "total_bounces": int(total_bounces),
+            "total_complaints": int(total_complaints),
             "open_rate": round(open_rate, 2),
             "ctr": round(ctr, 2),
+            "bounce_rate": round(bounce_rate, 2),
+            "complaint_rate": round(complaint_rate, 2),
         },
         "growth": {
             "signups": [{"date": d, "count": c} for d, c in signups],
             "unsubscribes": [{"date": d, "count": c} for d, c in unsubscribes],
             "opens": [{"date": d, "count": int(c or 0)} for d, c in opens_ts],
             "clicks": [{"date": d, "count": int(c or 0)} for d, c in clicks_ts],
+            "bounces": [{"date": d, "count": c} for d, c in bounces_ts],
+            "complaints": [{"date": d, "count": c} for d, c in complaints_ts],
         },
         "delivery": {
             "sent": delivery_results.get("sent", 0),

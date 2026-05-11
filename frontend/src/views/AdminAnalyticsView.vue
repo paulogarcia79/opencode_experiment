@@ -241,7 +241,7 @@ watch(range, loadAnalytics)
       </div>
 
       <!-- Engagement Summary Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-6">
         <div class="bg-surface-900 border border-white/5 rounded-2xl p-6">
           <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Total Opens</p>
           <p class="text-3xl font-display font-bold text-white">{{ analyticsData.summary.total_opens }}</p>
@@ -257,6 +257,14 @@ watch(range, loadAnalytics)
         <div class="bg-surface-900 border border-white/5 rounded-2xl p-6">
           <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">CTR</p>
           <p class="text-3xl font-display font-bold text-primary-400">{{ analyticsData.summary.ctr }}%</p>
+        </div>
+        <div class="bg-surface-900 border border-white/5 rounded-2xl p-6">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Bounce Rate</p>
+          <p class="text-3xl font-display font-bold text-amber-400">{{ analyticsData.summary.bounce_rate }}%</p>
+        </div>
+        <div class="bg-surface-900 border border-white/5 rounded-2xl p-6">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Complaint Rate</p>
+          <p class="text-3xl font-display font-bold text-rose-400">{{ analyticsData.summary.complaint_rate }}%</p>
         </div>
       </div>
 
