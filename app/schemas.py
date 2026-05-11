@@ -93,3 +93,17 @@ class RevisionRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ImportSuccessItem(BaseModel):
+    id: str
+    title: str
+    slug: str
+
+class ImportErrorItem(BaseModel):
+    filename: str
+    error: str
+
+class ImportResult(BaseModel):
+    successes: List[ImportSuccessItem]
+    errors: List[ImportErrorItem]
+    total: int

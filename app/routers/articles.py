@@ -1,13 +1,13 @@
 from datetime import timezone
 from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, UploadFile, File
 from sqlmodel import Session, select, func
 from app.database import get_session
 from app.dependencies import require_admin, get_arq_pool
 from arq.connections import ArqRedis
 from app.models import Article, NewsletterSend, Tag, ArticleTag, ArticleRevision
-from app.schemas import ArticleCreate, ArticleUpdate, ArticleAutoSave, TagRead, RevisionListRead, RevisionRead
+from app.schemas import ArticleCreate, ArticleUpdate, ArticleAutoSave, TagRead, RevisionListRead, RevisionRead, ImportResult
 from app.services.article_service import (
     create_article,
     get_article_by_slug,
@@ -304,6 +304,18 @@ def delete_article_endpoint(article_id: UUID, session: Session = Depends(get_ses
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
     delete_article(session, article)
     return None
+
+@router.post("/api/admin/articles/import", response_model=ImportResult, dependencies=[Depends(require_admin)])
+async def import_markdown_endpoint(
+    files: list[UploadFile] = File(...),
+    session: Session = Depends(get_session),
+):
+    from app.services.markdown_import_service import import_markdown_files
+    file_contents = []
+    for f in files:
+        content = await f.read()
+        file_contents.append((f.filename, content))
+    return import_markdown_files(session, file_contents)
 
 @router.post("/api/admin/articles/autosave", dependencies=[Depends(require_admin)])
 def autosave_create_article_endpoint(

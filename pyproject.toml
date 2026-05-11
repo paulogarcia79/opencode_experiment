@@ -22,6 +22,9 @@ dependencies = [
     "mjml-python>=1.4.0",
     "jinja2>=3.1.6",
     "svix>=1.57.0",
+    "markdown-it-py>=3.0.0",
+    "mdit-py-plugins>=0.4.0",
+    "python-frontmatter>=1.1.0",
 ]
 
 [project.optional-dependencies]
