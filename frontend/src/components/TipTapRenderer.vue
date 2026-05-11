@@ -54,4 +54,22 @@ const htmlContent = computed(() => renderTipTapJSON(props.content))
   border-radius: 0.75rem;
   margin: 1.5rem 0;
 }
+.prose-invert :deep(table) {
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  width: 100%;
+}
+.prose-invert :deep(td),
+.prose-invert :deep(th) {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 0.75rem;
+  min-width: 100px;
+}
+.prose-invert :deep(th) {
+  background: rgba(124, 58, 237, 0.1);
+  font-weight: 600;
+}
+.prose-invert :deep(td) {
+  background: rgba(255, 255, 255, 0.02);
+}
 </style>

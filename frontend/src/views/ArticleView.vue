@@ -193,4 +193,23 @@ onMounted(async () => {
   border-radius: 0.75rem;
   margin: 1.5rem 0;
 }
+
+.article-content :deep(table) {
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  width: 100%;
+}
+.article-content :deep(td),
+.article-content :deep(th) {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 0.75rem;
+  min-width: 100px;
+}
+.article-content :deep(th) {
+  background: rgba(124, 58, 237, 0.1);
+  font-weight: 600;
+}
+.article-content :deep(td) {
+  background: rgba(255, 255, 255, 0.02);
+}
 </style>
