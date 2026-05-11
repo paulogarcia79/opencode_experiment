@@ -143,9 +143,14 @@ def _html_to_tiptap(html: str) -> dict:
             elif node_type == "table":
                 children = self._filter_whitespace_children(children)
                 return {"type": "table", "content": children}
-            elif node_type in ("tableHeader", "tableBody"):
+            elif node_type == "tableSection":
+                # TipTap doesn't use tableHeader/tableBody wrappers.
+                # Unwrap rows directly into the parent table.
                 children = self._filter_whitespace_children(children)
-                return {"type": node_type, "content": children}
+                if self._stack:
+                    parent = self._stack[-1]
+                    parent.setdefault("children", []).extend(children)
+                return None
             elif node_type == "tableRow":
                 children = self._filter_whitespace_children(children)
                 return {"type": "tableRow", "content": children}
@@ -207,11 +212,11 @@ def _html_to_tiptap(html: str) -> dict:
                 self._flush_text()
                 self._stack.append({"type": "table", "children": []})
             elif tag == "thead":
-                self._stack.append({"type": "tableHeader", "children": []})
+                self._stack.append({"type": "tableSection", "children": [], "_header": True})
             elif tag == "tbody":
-                self._stack.append({"type": "tableBody", "children": []})
+                self._stack.append({"type": "tableSection", "children": [], "_header": False})
             elif tag == "tr":
-                self._stack.append({"type": "tableRow", "children": [], "_header": self._stack[-1]["type"] == "tableHeader" if self._stack else False})
+                self._stack.append({"type": "tableRow", "children": []})
             elif tag in ("td", "th"):
                 self._stack.append({"type": "tableCell", "children": [], "_header": tag == "th"})
 
