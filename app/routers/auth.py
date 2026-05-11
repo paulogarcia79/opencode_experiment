@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models.user import User
-from app.schemas import LoginRequest, ForgotPasswordRequest
+from app.schemas import LoginRequest, ForgotPasswordRequest, ResetPasswordRequest
 from app.services.auth_service import verify_password, create_access_token, generate_reset_token, validate_reset_token, reset_password
 from app.services.email_service import send_password_reset_email
 
@@ -53,3 +53,17 @@ def forgot_password(request: ForgotPasswordRequest, session: Session = Depends(g
     _forgot_password_cooldown[email] = now
     
     return {"message": "If an account exists with that email, a reset link has been sent"}
+
+@router.post("/reset-password")
+def reset_password(request: ResetPasswordRequest, session: Session = Depends(get_session)):
+    user = validate_reset_token(request.token, session)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token.",
+        )
+    
+    from app.services.auth_service import reset_password as do_reset_password
+    do_reset_password(user, request.new_password, session)
+    
+    return {"message": "Password reset successfully."}

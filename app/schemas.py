@@ -56,6 +56,10 @@ class LoginRequest(BaseModel):
 class ForgotPasswordRequest(BaseModel):
     email: str
 
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
 class TagRead(BaseModel):
     id: str
     name: str
