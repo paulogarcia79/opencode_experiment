@@ -24,6 +24,14 @@ async def resend_webhook(request: Request, session: Session = Depends(get_sessio
         event_type = event.get("type")
         created_at_str = event.get("created_at")
         data = event.get("data", {})
+        svix_id = event.get("svix_id")
+        
+        # Check for duplicate event via svix_id
+        if svix_id:
+            existing = session.exec(select(EmailEvent).where(EmailEvent.svix_id == svix_id)).first()
+            if existing:
+                logger.info(f"Skipping duplicate event: {svix_id}")
+                continue
         
         # We'll use tags or headers to find our newsletter_send_id
         # For now, let's assume we pass it in 'tags'
@@ -43,7 +51,8 @@ async def resend_webhook(request: Request, session: Session = Depends(get_sessio
                 newsletter_send_id=send_id,
                 event_type=event_type,
                 timestamp=datetime.fromisoformat(created_at_str.replace("Z", "+00:00")) if created_at_str else datetime.utcnow(),
-                raw_payload=event
+                raw_payload=event,
+                svix_id=svix_id,
             )
             session.add(email_event)
             

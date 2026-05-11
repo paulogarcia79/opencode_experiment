@@ -11,3 +11,4 @@ class EmailEvent(SQLModel, table=True):
     event_type: str = Field(nullable=False)  # open, click, bounce, delivered, etc.
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     raw_payload: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    svix_id: Optional[str] = Field(default=None, nullable=True, unique=True, index=True)
