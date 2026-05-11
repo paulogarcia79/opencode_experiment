@@ -46,8 +46,8 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 ## Analytics & Dashboard
 
 - [x] **Subscriber analytics** — Growth charts, churn rate, active subscriber count (Interactive Admin Dashboard with Chart.js)
-- [ ] **Article performance** — Views, newsletter open rates, click-through rates
-- [ ] **Popular articles** — Most-read articles list
+- [x] **Article performance** — Views, newsletter open rates, click-through rates (ArticleView table with 24h IP dedup, automatic tracking on article fetch, per-article analytics endpoint, admin articles list columns, analytics page performance table)
+- [x] **Popular articles** — Most-read articles list (available via performance endpoint, sorted by views)
 - [ ] **Referral tracking** — Where subscribers are coming from
 
 ## Infrastructure & DevEx
