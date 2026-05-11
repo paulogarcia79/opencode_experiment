@@ -53,6 +53,9 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
 class TagRead(BaseModel):
     id: str
     name: str
