@@ -86,7 +86,8 @@ async def _run_single_send(session, send_id):
             subscriber.email,
             article.title,
             html,
-            subscriber.confirmation_token
+            subscriber.confirmation_token,
+            send_id=str(send_id)
         )
         send_record.status = "sent"
         session.add(send_record)

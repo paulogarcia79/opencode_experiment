@@ -12,6 +12,10 @@ class NewsletterSend(SQLModel, table=True):
     status: str = Field(default="pending", nullable=False)
     error_message: Optional[str] = Field(default=None, nullable=True)
     scheduled_at: Optional[datetime] = Field(default=None, nullable=True)
+    opened_at: Optional[datetime] = Field(default=None, nullable=True)
+    clicked_at: Optional[datetime] = Field(default=None, nullable=True)
+    open_count: int = Field(default=0, nullable=False)
+    click_count: int = Field(default=0, nullable=False)
     sent_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         nullable=False

@@ -74,6 +74,46 @@ const growthChartData = computed(() => {
   }
 })
 
+const engagementChartData = computed(() => {
+  if (!analyticsData.value) return null
+
+  const opens = analyticsData.value.growth.opens
+  const clicks = analyticsData.value.growth.clicks
+
+  const allDates = Array.from(new Set([
+    ...opens.map((s: any) => s.date),
+    ...clicks.map((u: any) => u.date)
+  ])).sort()
+
+  return {
+    labels: allDates,
+    datasets: [
+      {
+        label: 'Opens',
+        data: allDates.map(date => {
+          const match = opens.find((s: any) => s.date === date)
+          return match ? match.count : 0
+        }),
+        borderColor: '#6366f1', // primary-500
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        tension: 0.4,
+        fill: true,
+      },
+      {
+        label: 'Clicks',
+        data: allDates.map(date => {
+          const match = clicks.find((u: any) => u.date === date)
+          return match ? match.count : 0
+        }),
+        borderColor: '#f43f5e', // rose-500
+        backgroundColor: 'rgba(244, 63, 94, 0.1)',
+        tension: 0.4,
+        fill: true,
+      }
+    ]
+  }
+})
+
 const deliveryChartData = computed(() => {
   if (!analyticsData.value) return null
 
@@ -200,14 +240,43 @@ watch(range, loadAnalytics)
         </div>
       </div>
 
+      <!-- Engagement Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-surface-900 border border-white/5 rounded-2xl p-6">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Total Opens</p>
+          <p class="text-3xl font-display font-bold text-white">{{ analyticsData.summary.total_opens }}</p>
+        </div>
+        <div class="bg-surface-900 border border-white/5 rounded-2xl p-6">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Total Clicks</p>
+          <p class="text-3xl font-display font-bold text-white">{{ analyticsData.summary.total_clicks }}</p>
+        </div>
+        <div class="bg-surface-900 border border-white/5 rounded-2xl p-6">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Open Rate</p>
+          <p class="text-3xl font-display font-bold text-emerald-400">{{ analyticsData.summary.open_rate }}%</p>
+        </div>
+        <div class="bg-surface-900 border border-white/5 rounded-2xl p-6">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">CTR</p>
+          <p class="text-3xl font-display font-bold text-primary-400">{{ analyticsData.summary.ctr }}%</p>
+        </div>
+      </div>
+
       <!-- Charts -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div class="bg-surface-900 border border-white/5 rounded-2xl p-6 h-[400px]">
-           <h3 class="text-sm font-medium text-slate-400 uppercase tracking-wider mb-6">Growth Over Time</h3>
+           <h3 class="text-sm font-medium text-slate-400 uppercase tracking-wider mb-6">Audience Growth</h3>
            <div class="h-[300px]">
              <Line v-if="growthChartData" :data="growthChartData" :options="chartOptions" />
            </div>
         </div>
+        <div class="bg-surface-900 border border-white/5 rounded-2xl p-6 h-[400px]">
+           <h3 class="text-sm font-medium text-slate-400 uppercase tracking-wider mb-6">Engagement Trends</h3>
+           <div class="h-[300px]">
+             <Line v-if="engagementChartData" :data="engagementChartData" :options="chartOptions" />
+           </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div class="bg-surface-900 border border-white/5 rounded-2xl p-6 h-[400px]">
            <h3 class="text-sm font-medium text-slate-400 uppercase tracking-wider mb-6">Newsletter Delivery</h3>
            <div class="h-[300px]">

@@ -29,9 +29,11 @@ def get_analytics(
     if dialect == "sqlite":
         date_func = func.strftime('%Y-%m-%d', Subscriber.created_at)
         unsub_date_func = func.strftime('%Y-%m-%d', Subscriber.updated_at)
+        date_func_ns = func.strftime('%Y-%m-%d', NewsletterSend.created_at)
     else:
         date_func = func.date_trunc('day', Subscriber.created_at)
         unsub_date_func = func.date_trunc('day', Subscriber.updated_at)
+        date_func_ns = func.date_trunc('day', NewsletterSend.created_at)
 
     signups = session.exec(
         select(date_func, func.count(Subscriber.id))
@@ -46,6 +48,19 @@ def get_analytics(
         .group_by(unsub_date_func)
     ).all()
 
+    # Engagement time-series
+    opens_ts = session.exec(
+        select(date_func_ns, func.sum(NewsletterSend.open_count))
+        .where(NewsletterSend.created_at >= start_date)
+        .group_by(date_func_ns)
+    ).all()
+
+    clicks_ts = session.exec(
+        select(date_func_ns, func.sum(NewsletterSend.click_count))
+        .where(NewsletterSend.created_at >= start_date)
+        .group_by(date_func_ns)
+    ).all()
+
     # 3. Delivery Stats
     delivery_stats = session.exec(
         select(NewsletterSend.status, func.count(NewsletterSend.id))
@@ -54,16 +69,37 @@ def get_analytics(
     ).all()
 
     delivery_results = {s: c for s, c in delivery_stats}
+    total_sent = delivery_results.get("sent", 0)
+
+    # 4. Engagement Stats
+    total_opens = session.exec(
+        select(func.sum(NewsletterSend.open_count))
+        .where(NewsletterSend.created_at >= start_date)
+    ).first() or 0
+
+    total_clicks = session.exec(
+        select(func.sum(NewsletterSend.click_count))
+        .where(NewsletterSend.created_at >= start_date)
+    ).first() or 0
+
+    open_rate = (total_opens / total_sent * 100) if total_sent > 0 else 0
+    ctr = (total_clicks / total_sent * 100) if total_sent > 0 else 0
 
     return {
         "summary": {
             "total_active": total_active,
             "total_pending": total_pending,
             "total_unsubscribed": total_unsubscribed,
+            "total_opens": int(total_opens),
+            "total_clicks": int(total_clicks),
+            "open_rate": round(open_rate, 2),
+            "ctr": round(ctr, 2),
         },
         "growth": {
             "signups": [{"date": d, "count": c} for d, c in signups],
             "unsubscribes": [{"date": d, "count": c} for d, c in unsubscribes],
+            "opens": [{"date": d, "count": int(c or 0)} for d, c in opens_ts],
+            "clicks": [{"date": d, "count": int(c or 0)} for d, c in clicks_ts],
         },
         "delivery": {
             "sent": delivery_results.get("sent", 0),
