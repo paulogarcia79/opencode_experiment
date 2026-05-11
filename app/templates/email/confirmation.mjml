@@ -1,0 +1,16 @@
+{% extends "base.mjml" %}
+
+{% block content %}
+<mj-text font-size="28px" font-weight="bold" padding-bottom="20px" color="#7C3AED" css-class="brand-title">
+  Verification Required
+</mj-text>
+<mj-text>
+  Welcome to the inner circle of <strong>{{ site_name }}</strong>. To complete your initiation and receive our upcoming transmissions, please verify your identity.
+</mj-text>
+<mj-button href="{{ confirmation_url }}" border-radius="12px" padding-top="30px" inner-padding="16px 32px" font-size="18px">
+  ACTIVATE SUBSCRIPTION
+</mj-button>
+<mj-text font-size="14px" color="#94a3b8" padding-top="40px" align="center">
+  If this wasn't you, ignore this message. This link will self-destruct if not used.
+</mj-text>
+{% endblock %}

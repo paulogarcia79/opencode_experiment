@@ -1,0 +1,16 @@
+{% extends "base.mjml" %}
+
+{% block content %}
+<mj-text font-size="28px" font-weight="bold" padding-bottom="10px" color="{{ brand_color }}" css-class="brand-title">
+  {{ article_title }}
+</mj-text>
+<mj-divider border-width="2px" border-color="#2D2D44" padding-bottom="30px" />
+<mj-text color="#E2E8F0">
+  {{ article_html|safe }}
+</mj-text>
+{% endblock %}
+
+{% block footer %}
+You are receiving this because you're part of the <strong>{{ site_name }}</strong> squad.<br/>
+<a href="{{ unsubscribe_url }}" class="footer-link">Unsubscribe</a> from future transmissions.
+{% endblock %}

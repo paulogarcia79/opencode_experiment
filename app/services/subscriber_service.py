@@ -2,9 +2,9 @@ import secrets
 from typing import Optional
 from sqlmodel import Session, select
 from app.models.subscriber import Subscriber
-from app.services.email_service import send_confirmation_email
+from arq.connections import ArqRedis
 
-def create_subscriber(session: Session, email: str) -> Optional[Subscriber]:
+async def create_subscriber(session: Session, email: str, arq_pool: ArqRedis) -> Optional[Subscriber]:
     """Create a new pending subscriber or return existing active/pending one."""
     existing = session.exec(
         select(Subscriber).where(Subscriber.email == email)
@@ -19,7 +19,7 @@ def create_subscriber(session: Session, email: str) -> Optional[Subscriber]:
         session.add(existing)
         session.commit()
         session.refresh(existing)
-        send_confirmation_email(existing.email, existing.confirmation_token)
+        await arq_pool.enqueue_job("send_confirmation_email_task", existing.email, existing.confirmation_token)
         return existing
     
     token = secrets.token_urlsafe(32)
@@ -31,7 +31,7 @@ def create_subscriber(session: Session, email: str) -> Optional[Subscriber]:
     session.add(subscriber)
     session.commit()
     session.refresh(subscriber)
-    send_confirmation_email(subscriber.email, subscriber.confirmation_token)
+    await arq_pool.enqueue_job("send_confirmation_email_task", subscriber.email, subscriber.confirmation_token)
     return subscriber
 
 def confirm_subscriber(session: Session, token: str) -> Optional[Subscriber]:

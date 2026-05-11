@@ -23,7 +23,15 @@ def generate_slug(title: str, session: Session) -> str:
     
     return slug
 
-def create_article(session: Session, title: str, content: dict, description: Optional[str] = None, send_newsletter: bool = True, tag_names: Optional[List[str]] = None) -> Article:
+def create_article(
+    session: Session,
+    title: str,
+    content: dict,
+    description: Optional[str] = None,
+    send_newsletter: bool = True,
+    tag_names: Optional[List[str]] = None,
+    scheduled_for: Optional[datetime] = None,
+) -> Article:
     slug = generate_slug(title, session)
     if description is None:
         description = auto_generate_description(content)
@@ -37,6 +45,7 @@ def create_article(session: Session, title: str, content: dict, description: Opt
         description=description,
         status="draft",
         send_newsletter=send_newsletter,
+        scheduled_for=scheduled_for,
         search_text=build_search_text(title, description, content, [t.name for t in tags]),
     )
     article.tags = tags

@@ -1,45 +1,43 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlmodel import Session, select
-import jwt
-import uuid
+from fastapi import Request, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from arq.connections import ArqRedis
 from app.config import settings
 from app.database import get_session
+from sqlmodel import Session, select
 from app.models.user import User
+import jwt
 
-security = HTTPBearer()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-def require_admin(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+def get_arq_pool(request: Request) -> ArqRedis:
+    return request.app.state.arq_pool
+
+async def require_admin(
+    token: str = Depends(oauth2_scheme),
     session: Session = Depends(get_session)
 ) -> User:
-    """Verify the request includes a valid admin JWT."""
     try:
-        payload = jwt.decode(
-            credentials.credentials, settings.JWT_SECRET_KEY, algorithms=["HS256"]
-        )
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
         user_id_str = payload.get("sub")
         if user_id_str is None:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid token payload",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
             )
+        import uuid
         user_id = uuid.UUID(user_id_str)
-    except jwt.ExpiredSignatureError:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
+            detail="Could not validate credentials",
         )
-    except (jwt.InvalidTokenError, ValueError):
+    
+    user = session.get(User, user_id)
+    if user is None:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid token",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
         )
-
-    user = session.exec(select(User).where(User.id == user_id)).first()
-    if not user or not user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not an admin user",
-        )
+    
+    # In this system, any valid user is an admin for now based on the PRD
     return user

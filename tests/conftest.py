@@ -2,9 +2,16 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel, Session, create_engine
 from sqlmodel.pool import StaticPool
+from unittest.mock import AsyncMock
 from app.main import app
 from app.database import get_session
 from app.services.seed_service import seed_default_admin
+
+@pytest.fixture(name="arq_pool")
+def arq_pool_fixture():
+    mock = AsyncMock()
+    app.state.arq_pool = mock
+    return mock
 
 @pytest.fixture(name="session")
 def session_fixture():
@@ -17,7 +24,7 @@ def session_fixture():
         yield session
 
 @pytest.fixture(name="client")
-def client_fixture(session: Session):
+def client_fixture(session: Session, arq_pool):
     def get_session_override():
         return session
 

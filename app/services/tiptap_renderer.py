@@ -43,9 +43,16 @@ def render_tiptap_node_to_html(node: Any) -> str:
         alt = attrs.get("alt", "")
         title = attrs.get("title", "")
         title_attr = f' title="{title}"' if title else ""
-        # Email-safe inline styles for images
-        style = 'max-width:100%;height:auto;display:block;'
-        return f'<img src="{src}" alt="{alt}"{title_attr} style="{style}" />'
+        
+        # Email clients are picky about images. 
+        # We use inline styles and explicit width/height if available.
+        # Default to max-width 100% for responsiveness.
+        style = 'max-width:100%;height:auto;display:block;border-radius:12px;margin:24px 0;border:1px solid rgba(255,255,255,0.1);'
+        
+        width = attrs.get("width", "600")
+        width_attr = f' width="{width}"' if width else ""
+        
+        return f'<img src="{src}" alt="{alt}"{title_attr}{width_attr} style="{style}" />'
     
     # Container nodes
     children_html = "".join(render_tiptap_node_to_html(child) for child in content)
@@ -73,15 +80,13 @@ def render_tiptap_node_to_html(node: Any) -> str:
         return children_html
 
 def render_tiptap_to_email_html(content: dict) -> str:
-    """Render TipTap JSON document to email-safe HTML with inline styles."""
+    """Render TipTap JSON document to email-safe HTML."""
     if not content or not isinstance(content, dict):
         return ""
     
     body_html = render_tiptap_node_to_html(content)
     
-    # Wrap in email-safe container with inline styles
-    return f"""
-    <div style="font-family: Georgia, serif; line-height: 1.6; color: #1a1a1a; max-width: 600px; margin: 0 auto;">
-        {body_html}
-    </div>
-    """
+    # We don't wrap in a styled div here anymore, 
+    # as MJML's mj-text component will handle the container and typography.
+    # We just ensure any specific overrides are handled.
+    return body_html

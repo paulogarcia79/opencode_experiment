@@ -21,3 +21,15 @@ export async function subscribeToNewsletter(email: string) {
   if (!res.ok) throw new Error('Subscription failed')
   return res.json()
 }
+
+export async function confirmSubscription(token: string) {
+  const res = await fetch(`${API_BASE}/api/subscribers/confirm?token=${token}`)
+  if (!res.ok) throw new Error('Confirmation failed')
+  return res.json()
+}
+
+export async function unsubscribeFromNewsletter(token: string) {
+  const res = await fetch(`${API_BASE}/api/subscribers/unsubscribe?token=${token}`)
+  if (!res.ok) throw new Error('Unsubscribe failed')
+  return res.json()
+}

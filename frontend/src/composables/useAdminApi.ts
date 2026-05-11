@@ -20,11 +20,20 @@ export async function login(email: string, password: string) {
   return res.json()
 }
 
+export async function fetchAnalytics(range: string = '30d') {
+  const res = await fetch(`${API_BASE}/api/admin/analytics?range=${range}`, {
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch analytics')
+  return res.json()
+}
+
 export async function fetchAdminArticles() {
   const res = await fetch(`${API_BASE}/api/admin/articles`, { headers: getAuthHeaders() })
   if (!res.ok) throw new Error('Failed to fetch articles')
   return res.json()
 }
+
 
 export async function fetchAdminArticle(id: string) {
   const res = await fetch(`${API_BASE}/api/admin/articles/${id}`, { headers: getAuthHeaders() })

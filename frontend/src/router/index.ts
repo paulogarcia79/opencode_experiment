@@ -7,6 +7,7 @@ import UnsubscribeView from '@/views/UnsubscribeView.vue'
 import AdminLoginView from '@/views/AdminLoginView.vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import AdminArticlesView from '@/views/AdminArticlesView.vue'
+import AdminAnalyticsView from '@/views/AdminAnalyticsView.vue'
 import AdminArticleEditView from '@/views/AdminArticleEditView.vue'
 import AdminMediaView from '@/views/AdminMediaView.vue'
 import AdminTagsView from '@/views/AdminTagsView.vue'
@@ -81,6 +82,11 @@ const router = createRouter({
           path: 'tags',
           name: 'admin-tags',
           component: AdminTagsView,
+        },
+        {
+          path: 'analytics',
+          name: 'admin-analytics',
+          component: AdminAnalyticsView,
         },
       ],
     },

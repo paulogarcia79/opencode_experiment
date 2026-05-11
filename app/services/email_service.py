@@ -1,36 +1,119 @@
 import resend
+import logging
+import re
+import os
+import mimetypes
+from datetime import datetime
 from app.config import settings
+from app.services.email_renderer import render
 
 resend.api_key = settings.RESEND_API_KEY
+
+logger = logging.getLogger(__name__)
+
+class EmailServiceError(Exception):
+    """Custom exception for email service failures."""
+    pass
+
+def _process_cids(html: str):
+    """
+    Find all local images in HTML, convert them to CID references,
+    and return the updated HTML and a list of attachments.
+    """
+    attachments = []
+    cids = {}
+    
+    # Construct absolute path to upload directory
+    # Get the project root (where the 'uploads' folder lives)
+    current_file = os.path.abspath(__file__)
+    # app/services/email_service.py -> app/services/ -> app/ -> project_root/
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
+    upload_dir = os.path.join(project_root, settings.UPLOAD_DIR)
+    
+    # Regex to find /uploads/filename.ext
+    pattern = r'src="([^"]*/' + re.escape(settings.UPLOAD_DIR) + r'/([^"]+))"'
+    
+    def replace_with_cid(match):
+        full_match = match.group(0)
+        filename = match.group(2)
+        
+        # Unique CID for this filename (deduplicate same image referenced multiple times)
+        if filename not in cids:
+            file_path = os.path.join(upload_dir, filename)
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, "rb") as f:
+                        content = list(f.read())
+                        cid = f"img_{len(attachments)}"
+                        cids[filename] = cid
+                        attachments.append({
+                            "filename": filename,
+                            "content": content,
+                            "content_id": cid
+                        })
+                        return f'src="cid:{cid}"'
+                except Exception as e:
+                    logger.error(f"Failed to read image for CID: {file_path}. Error: {e}")
+        else:
+            return f'src="cid:{cids[filename]}"'
+            
+        return full_match # Fallback to original if file not found
+
+    new_html = re.sub(pattern, replace_with_cid, html)
+    return new_html, attachments
 
 def send_confirmation_email(email: str, token: str) -> None:
     if not settings.RESEND_API_KEY:
         return
     confirmation_url = f"{settings.APP_BASE_URL}/confirm?token={token}"
-    resend.Emails.send({
-        "from": settings.RESEND_FROM_EMAIL,
-        "to": email,
-        "subject": "Confirm your newsletter subscription",
-        "html": f"""
-        <p>Thank you for subscribing! Please confirm your email address:</p>
-        <p><a href="{confirmation_url}">Confirm Subscription</a></p>
-        <p>If you did not request this, you can ignore this email.</p>
-        """,
+    
+    html = render("confirmation.mjml", {
+        "confirmation_url": confirmation_url,
+        "preview_text": "Please confirm your subscription to our newsletter.",
     })
+    
+    html, attachments = _process_cids(html)
+    
+    try:
+        params = {
+            "from": settings.RESEND_FROM_EMAIL,
+            "to": email,
+            "subject": f"Confirm your subscription to {settings.SITE_NAME}",
+            "html": html,
+        }
+        if attachments:
+            params["attachments"] = attachments
+            
+        resend.Emails.send(params)
+    except Exception as e:
+        logger.error(f"Failed to send confirmation email to {email}: {str(e)}")
+        raise EmailServiceError(str(e))
 
 def send_newsletter_email(email: str, article_title: str, article_html: str, unsubscribe_token: str) -> None:
     if not settings.RESEND_API_KEY:
         return
     unsubscribe_url = f"{settings.APP_BASE_URL}/unsubscribe?token={unsubscribe_token}"
-    resend.Emails.send({
-        "from": settings.RESEND_FROM_EMAIL,
-        "to": email,
-        "subject": article_title,
-        "html": f"""
-        {article_html}
-        <hr>
-        <p style="font-size: 12px; color: #666;">
-            <a href="{unsubscribe_url}">Unsubscribe</a>
-        </p>
-        """,
+    
+    html = render("newsletter.mjml", {
+        "article_title": article_title,
+        "article_html": article_html,
+        "unsubscribe_url": unsubscribe_url,
+        "preview_text": article_title,
     })
+    
+    html, attachments = _process_cids(html)
+    
+    try:
+        params = {
+            "from": settings.RESEND_FROM_EMAIL,
+            "to": email,
+            "subject": article_title,
+            "html": html,
+        }
+        if attachments:
+            params["attachments"] = attachments
+            
+        resend.Emails.send(params)
+    except Exception as e:
+        logger.error(f"Failed to send newsletter email to {email}: {str(e)}")
+        raise EmailServiceError(str(e))

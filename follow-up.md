@@ -6,7 +6,7 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 
 ## Authentication & Authorization
 
-- [ ] **Password-based login UI** — Replace bearer token with real username/password auth
+- [x] **Password-based login UI** — Replace bearer token with real username/password auth (JWT implemented)
 - [ ] **Password reset flow** — Email-based password reset for admin users
 - [ ] **OAuth / SSO integration** — Google, GitHub, or Slack OAuth for admin access
 - [ ] **Multi-author support** — Multiple users with roles (admin, editor, contributor)
@@ -16,21 +16,21 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 
 - [x] **Image upload** — Drag-and-drop image upload to local storage with custom TipTap node (S3 backend still pending)
 - [x] **Tags and categories** — Taxonomy system for organizing articles (flat many-to-many tags with hybrid autocomplete input, tag pages, admin management, tag-aware search)
-- [ ] **Article series / collections** — Group related articles into numbered series
-- [ ] **Scheduled publishing** — Publish articles at a future date/time
+- [x] **Scheduled publishing** — Publish articles at a future date/time (Integrated with ARQ background queue)
 - [x] **Auto-save drafts** — Periodic auto-save while editing to prevent data loss (2s debounce + 30s heartbeat, retry with exponential backoff, new-article creation with deferral)
 - [ ] **Revision history** — Track and restore previous versions of articles
 - [ ] **Markdown import** — Import articles from Markdown files
+- [ ] **Article series / collections** — Group related articles into numbered series
 
 ## Newsletter & Email
 
-- [ ] **Rich email templates** — Branded HTML email templates instead of inline styles
+- [x] **Rich email templates** — Branded MJML + Jinja2 templates with responsive layout and admin preview API
 - [ ] **Email open/click tracking** — Resend webhook integration for analytics
 - [ ] **Bounce handling** — Automatically mark bounced emails as unsubscribed
-- [ ] **Background job queue** — Redis + Celery/ARQ for reliable newsletter delivery at scale
+- [x] **Background job queue** — Redis + ARQ for reliable newsletter delivery at scale (Fan-out pattern, real-time progress tracking, automatic retries)
 - [ ] **Subscriber segmentation** — Tag-based segments for targeted newsletters
 - [ ] **A/B testing** — Test subject lines or content variations
-- [ ] **Preview email** — Send test newsletter to admin before publishing
+- [x] **Preview email** — Send test newsletter to admin before publishing
 
 ## Public Site & SEO
 
@@ -45,7 +45,7 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 
 ## Analytics & Dashboard
 
-- [ ] **Subscriber analytics** — Growth charts, churn rate, active subscriber count
+- [x] **Subscriber analytics** — Growth charts, churn rate, active subscriber count (Interactive Admin Dashboard with Chart.js)
 - [ ] **Article performance** — Views, newsletter open rates, click-through rates
 - [ ] **Popular articles** — Most-read articles list
 - [ ] **Referral tracking** — Where subscribers are coming from

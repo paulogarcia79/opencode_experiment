@@ -8,6 +8,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+
   backend:
     build:
       context: .
@@ -18,12 +21,33 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       RESEND_API_KEY: ${RESEND_API_KEY}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
+      REDIS_URL: redis://redis:6379/0
       APP_BASE_URL: ${APP_BASE_URL}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
       - db
+      - redis
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/blog
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
+      REDIS_URL: redis://redis:6379/0
+      APP_BASE_URL: ${APP_BASE_URL}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      - db
+      - redis
+    command: arq app.worker.settings
 
   frontend:
     build:

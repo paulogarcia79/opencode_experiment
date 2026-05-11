@@ -16,6 +16,7 @@ class Article(SQLModel, table=True):
     status: str = Field(default="draft", nullable=False)  # "draft" or "published"
     send_newsletter: bool = Field(default=True, nullable=False)
     published_at: Optional[datetime] = Field(default=None)
+    scheduled_for: Optional[datetime] = Field(default=None, nullable=True)
     search_text: Optional[str] = Field(default=None, sa_column=Column(Text))
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)

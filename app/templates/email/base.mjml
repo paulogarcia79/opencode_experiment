@@ -1,0 +1,59 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{ site_name }}</mj-title>
+    <mj-preview>{{ preview_text }}</mj-preview>
+    <mj-font name="Russo One" href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" />
+    <mj-font name="Chakra Petch" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="'Chakra Petch', 'Trebuchet MS', Helvetica, Arial, sans-serif"></mj-all>
+      <mj-text font-size="16px" color="#E2E8F0" line-height="1.6"></mj-text>
+      <mj-section padding="24px 0"></mj-section>
+      <mj-button font-family="'Russo One', 'Arial Black', sans-serif" background-color="#F43F5E" color="#ffffff"></mj-button>
+    </mj-attributes>
+    <mj-style inline="inline">
+      .body-section { background-color: #0F0F23; }
+      .content-column { background-color: #161631 !important; border: 1px solid rgba(255,255,255,0.05); }
+      .brand-title { font-family: 'Russo One', sans-serif !important; text-transform: uppercase; letter-spacing: 1px; }
+      h1, h2, h3 { font-family: 'Russo One', sans-serif !important; color: #7C3AED !important; margin-top: 32px; margin-bottom: 16px; text-transform: uppercase; }
+      p { margin-bottom: 16px; }
+      a { color: #F43F5E; text-decoration: none; font-weight: bold; }
+      blockquote { border-left: 4px solid #F43F5E; padding: 4px 0 4px 20px; font-style: italic; color: #A78BFA; margin: 24px 0; background-color: rgba(244, 63, 94, 0.05); }
+      ul, ol { padding-left: 24px; margin-bottom: 16px; }
+      li { margin-bottom: 8px; }
+      img { border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); margin: 24px 0; }
+      .footer-link { color: #A78BFA; text-decoration: underline; }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#0F0F23">
+    <!-- Header -->
+    <mj-section padding-bottom="0">
+      <mj-column>
+        {% if site_logo_url %}
+        <mj-image src="{{ site_logo_url }}" alt="{{ site_name }}" width="150px" align="center" padding-bottom="10px" />
+        {% endif %}
+        <mj-text align="center" font-size="28px" font-weight="bold" color="{{ brand_color }}" css-class="brand-title">
+          {{ site_name }}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content -->
+    <mj-section>
+      <mj-column css-class="content-column" padding="40px" border-radius="16px">
+        {% block content %}{% endblock %}
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section padding-top="0">
+      <mj-column>
+        <mj-text align="center" color="#64748b" font-size="12px">
+          &copy; {{ current_year }} {{ site_name }} // TRANSMISSION END
+        </mj-text>
+        <mj-text align="center" color="#64748b" font-size="12px">
+          {% block footer %}{% endblock %}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

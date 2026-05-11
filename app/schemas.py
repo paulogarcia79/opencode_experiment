@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, field_validator
 
@@ -6,6 +7,7 @@ class ArticleCreate(BaseModel):
     content: dict
     description: Optional[str] = None
     send_newsletter: bool = True
+    scheduled_for: Optional[datetime] = None
     tag_names: List[str] = []
 
     @field_validator("tag_names")
@@ -21,6 +23,7 @@ class ArticleUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[str] = None
     send_newsletter: Optional[bool] = None
+    scheduled_for: Optional[datetime] = None
     tag_names: Optional[List[str]] = None
 
     @field_validator("tag_names")

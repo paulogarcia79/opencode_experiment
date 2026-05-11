@@ -4,8 +4,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlmodel import Session
 from app.database import get_session
-from app.dependencies import require_admin
-from app.models.article import Article
+from app.dependencies import require_admin, get_arq_pool
+from arq.connections import ArqRedis
+from app.models import Article, NewsletterSend, Tag, ArticleTag
 from app.schemas import ArticleCreate, ArticleUpdate, ArticleAutoSave, TagRead
 from app.services.article_service import (
     create_article,
@@ -150,7 +151,15 @@ def create_article_endpoint(
     data: ArticleCreate,
     session: Session = Depends(get_session),
 ):
-    article = create_article(session, data.title, data.content, data.description, data.send_newsletter, data.tag_names)
+    article = create_article(
+        session,
+        data.title,
+        data.content,
+        data.description,
+        data.send_newsletter,
+        data.tag_names,
+        data.scheduled_for
+    )
     response = article.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
     return response
@@ -169,10 +178,11 @@ def get_admin_article_endpoint(article_id: UUID, session: Session = Depends(get_
     return response
 
 @router.put("/api/articles/{article_id}", dependencies=[Depends(require_admin)])
-def update_article_endpoint(
+async def update_article_endpoint(
     article_id: UUID,
     data: ArticleUpdate,
     session: Session = Depends(get_session),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
 ):
     article = session.get(Article, article_id)
     if not article:
@@ -203,6 +213,8 @@ def update_article_endpoint(
         update_data["send_newsletter"] = data.send_newsletter
     if data.tag_names is not None:
         update_data["tag_names"] = data.tag_names
+    if data.scheduled_for is not None:
+        update_data["scheduled_for"] = data.scheduled_for
     
     updated = update_article(session, article, **update_data)
     
@@ -211,7 +223,7 @@ def update_article_endpoint(
     response_data["tags"] = [TagRead.model_validate(t).model_dump() for t in updated.tags]
     
     if should_send_newsletter:
-        send_newsletter_for_article(session, updated)
+        await send_newsletter_for_article(arq_pool, updated, defer_until=updated.scheduled_for)
     
     return response_data
 
@@ -235,6 +247,7 @@ def autosave_create_article_endpoint(
         data.description,
         send_newsletter=False,
         tag_names=data.tag_names,
+        scheduled_for=None,
     )
     response_data = article.model_dump()
     response_data["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
@@ -310,14 +323,94 @@ def delete_tag_endpoint(tag_id: UUID, session: Session = Depends(get_session)):
 
 @router.post("/api/admin/articles/{article_id}/preview-email", dependencies=[Depends(require_admin)])
 def preview_email_endpoint(article_id: UUID, session: Session = Depends(get_session)):
+    from app.services.email_service import send_newsletter_email, EmailServiceError
     article = session.get(Article, article_id)
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
     
     html = render_tiptap_to_email_html(article.content)
     # Use dummy unsubscribe token for preview
-    send_newsletter_email(settings.ADMIN_EMAIL, article.title, html, "preview-mode-no-unsubscribe")
+    try:
+        send_newsletter_email(settings.ADMIN_EMAIL, article.title, html, "preview-mode-no-unsubscribe")
+    except EmailServiceError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to send preview email: {str(e)}"
+        )
     return {"message": "Preview sent successfully"}
+
+@router.get("/api/admin/newsletter-blasts/{article_id}/status", dependencies=[Depends(require_admin)])
+def get_newsletter_blast_status_endpoint(article_id: UUID, session: Session = Depends(get_session)):
+    from sqlmodel import func, select
+    
+    # Counts of pending, sent, failed
+    counts = session.exec(
+        select(NewsletterSend.status, func.count(NewsletterSend.id))
+        .where(NewsletterSend.article_id == article_id)
+        .group_by(NewsletterSend.status)
+    ).all()
+    
+    results = {
+        "pending": 0,
+        "sent": 0,
+        "failed": 0,
+        "total": 0,
+        "progress_percentage": 0.0
+    }
+    
+    for status_name, count in counts:
+        if status_name in results:
+            results[status_name] = count
+        results["total"] += count
+        
+    if results["total"] > 0:
+        # Progress is (sent + failed) / total
+        completed = results["sent"] + results["failed"]
+        results["progress_percentage"] = (completed / results["total"]) * 100
+        
+    return results
+
+@router.get("/api/admin/templates/preview/{template_name}", dependencies=[Depends(require_admin)])
+def preview_template_endpoint(template_name: str):
+    from app.services.email_renderer import render
+    from app.config import settings
+    
+    mock_context = {
+        "preview_text": f"{template_name.capitalize()} Preview",
+    }
+    
+    if template_name == "newsletter":
+        mock_context.update({
+            "article_title": "Interstellar Travel: The Next Frontier",
+            "article_html": """
+                <p>Welcome to the future of space exploration. As we look towards the stars, the possibilities are infinite.</p>
+                <h2>Propulsion Systems</h2>
+                <p>New ion engines are allowing us to reach speeds never before possible. 
+                   <a href="#">Read more about the tech here</a>.</p>
+                <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=600" alt="Space" width="600" />
+                <blockquote>"The stars are not the limit, they are just the beginning." - Commander Shepard</blockquote>
+                <ul>
+                    <li>Deep space longevity</li>
+                    <li>Radiation shielding</li>
+                    <li>Cryogenic sleep pods</li>
+                </ul>
+            """,
+            "unsubscribe_url": "#",
+        })
+    elif template_name == "confirmation":
+        mock_context.update({
+            "confirmation_url": "#",
+        })
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+        
+    try:
+        html = render(f"{template_name}.mjml", mock_context)
+        return Response(content=html, media_type="text/html")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Template preview error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Public tag endpoints
 
