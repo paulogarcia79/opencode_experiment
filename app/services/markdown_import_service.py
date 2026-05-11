@@ -1,16 +1,22 @@
 """Markdown import service for importing .md files as draft articles."""
 
+import logging
 import re
 from typing import Optional
 from uuid import UUID
 
 import frontmatter
+import httpx
 from markdown_it import MarkdownIt
 from sqlmodel import Session
 
+from app.config import settings
 from app.models import Article
 from app.schemas import ImportResult, ImportSuccessItem, ImportErrorItem
 from app.services.article_service import create_article, generate_slug
+from app.services.storage_service import storage
+
+logger = logging.getLogger(__name__)
 
 
 def _create_md() -> MarkdownIt:
@@ -106,6 +112,16 @@ def _html_to_tiptap(html: str) -> dict:
             elif tag == "br":
                 self._flush_text()
                 self.content.append({"type": "hardBreak"})
+            elif tag == "img":
+                self._flush_text()
+                src = attrs_dict.get("src", "")
+                alt = attrs_dict.get("alt", "")
+                image_node = {"type": "image", "attrs": {"src": src, "alt": alt}}
+                if self._stack:
+                    parent = self._stack[-1]
+                    parent["children"].append(image_node)
+                else:
+                    self.content.append(image_node)
             elif tag == "table":
                 self._flush_text()
                 self._stack.append({"type": "table", "children": []})
@@ -126,6 +142,8 @@ def _html_to_tiptap(html: str) -> dict:
             self._flush_text()
             if tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
                 self._close_block(tag[1])
+            elif tag == "p":
+                self._close_block("paragraph")
             elif tag in ("strong", "b"):
                 self._remove_mark("bold")
             elif tag in ("em", "i"):
@@ -258,6 +276,66 @@ def _html_to_tiptap(html: str) -> dict:
     return converter.get_result()
 
 
+def _download_remote_images(tiptap_doc: dict) -> list[str]:
+    """Walk TipTap JSON, download remote images, rewrite src to local paths.
+
+    Returns list of error messages for failed downloads.
+    """
+    errors = []
+    _walk_and_download(tiptap_doc, errors)
+    return errors
+
+
+def _walk_and_download(node: dict, errors: list[str]) -> None:
+    """Recursively walk TipTap JSON and download remote images."""
+    if node.get("type") == "image":
+        attrs = node.get("attrs", {})
+        src = attrs.get("src", "")
+        if not src or src.startswith("/uploads/"):
+            return
+
+        try:
+            response = httpx.get(src, follow_redirects=True, timeout=10.0)
+            response.raise_for_status()
+
+            content_type = response.headers.get("content-type", "")
+            if content_type not in settings.ALLOWED_IMAGE_TYPES:
+                errors.append(f"Image skipped (unsupported type {content_type}): {src}")
+                return
+
+            ext = _extension_from_mime(content_type)
+            filename = src.split("/")[-1].split("?")[0] or f"image{ext}"
+            if not filename.endswith(ext):
+                filename = f"{filename}{ext}"
+
+            result = storage.save(
+                file_bytes=response.content,
+                filename=filename,
+                mime_type=content_type,
+            )
+            attrs["src"] = result["url"]
+        except httpx.HTTPStatusError as e:
+            errors.append(f"Image download failed (HTTP {e.response.status_code}): {src}")
+        except Exception as e:
+            errors.append(f"Image download failed ({str(e)}): {src}")
+        return
+
+    if "content" in node:
+        for child in node["content"]:
+            _walk_and_download(child, errors)
+
+
+def _extension_from_mime(mime_type: str) -> str:
+    """Map MIME type to file extension."""
+    mapping = {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/gif": ".gif",
+        "image/webp": ".webp",
+    }
+    return mapping.get(mime_type, ".bin")
+
+
 def _extract_frontmatter(content: str, filename: str) -> dict:
     """Parse YAML frontmatter from markdown content."""
     try:
@@ -323,6 +401,20 @@ def import_markdown_files(
                 error=f"Failed to convert markdown: {str(e)}",
             ))
             continue
+
+        try:
+            image_errors = _download_remote_images(tiptap_content)
+            for err in image_errors:
+                logger.warning(f"[{filename}] {err}")
+                errors.append(ImportErrorItem(
+                    filename=filename,
+                    error=err,
+                ))
+        except Exception as e:
+            errors.append(ImportErrorItem(
+                filename=filename,
+                error=f"Failed to process images: {str(e)}",
+            ))
 
         try:
             article = create_article(
