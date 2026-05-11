@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
-import { fetchAnalytics } from '@/composables/useAdminApi'
+import { fetchAnalytics, getAuthHeaders } from '@/composables/useAdminApi'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -29,8 +29,11 @@ ChartJS.register(
   Filler
 )
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+
 const range = ref<'7d' | '30d' | '90d'>('30d')
 const analyticsData = ref<any>(null)
+const performanceData = ref<any[]>([])
 const loading = ref(true)
 
 const growthChartData = computed(() => {
@@ -169,7 +172,12 @@ const chartOptions = {
 async function loadAnalytics() {
   loading.value = true
   try {
-    analyticsData.value = await fetchAnalytics(range.value)
+    const [analytics, performance] = await Promise.all([
+      fetchAnalytics(range.value),
+      fetch(`${API_BASE}/api/admin/articles/performance`, { headers: getAuthHeaders() }).then(r => r.json()),
+    ])
+    analyticsData.value = analytics
+    performanceData.value = performance.sort((a: any, b: any) => b.total_views - a.total_views)
   } catch (err) {
     console.error('Failed to fetch analytics:', err)
   } finally {
@@ -290,6 +298,58 @@ watch(range, loadAnalytics)
            <div class="h-[300px]">
              <Doughnut v-if="deliveryChartData" :data="deliveryChartData" :options="{ ...chartOptions, scales: undefined }" />
            </div>
+        </div>
+      </div>
+
+      <!-- Article Performance Section -->
+      <div class="bg-surface-900 border border-white/5 rounded-2xl p-6">
+        <h3 class="text-sm font-medium text-slate-400 uppercase tracking-wider mb-6">Article Performance</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="border-b border-white/5">
+              <tr>
+                <th class="px-5 py-3 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Title</th>
+                <th class="px-5 py-3 text-right font-medium text-slate-500 text-xs uppercase tracking-wider">Views</th>
+                <th class="px-5 py-3 text-right font-medium text-slate-500 text-xs uppercase tracking-wider">Unique (24h)</th>
+                <th class="px-5 py-3 text-right font-medium text-slate-500 text-xs uppercase tracking-wider">Email Sent</th>
+                <th class="px-5 py-3 text-right font-medium text-slate-500 text-xs uppercase tracking-wider">Opens</th>
+                <th class="px-5 py-3 text-right font-medium text-slate-500 text-xs uppercase tracking-wider">Clicks</th>
+                <th class="px-5 py-3 text-right font-medium text-slate-500 text-xs uppercase tracking-wider">Open Rate</th>
+                <th class="px-5 py-3 text-right font-medium text-slate-500 text-xs uppercase tracking-wider">CTR</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              <tr
+                v-for="article in performanceData"
+                :key="article.id"
+                class="hover:bg-white/[0.02] transition-colors duration-150"
+              >
+                <td class="px-5 py-3">
+                  <span class="font-medium text-white">{{ article.title }}</span>
+                  <span
+                    :class="[
+                      'ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs',
+                      article.status === 'published'
+                        ? 'bg-emerald-500/10 text-emerald-400'
+                        : 'bg-slate-500/10 text-slate-400',
+                    ]"
+                  >
+                    {{ article.status }}
+                  </span>
+                </td>
+                <td class="px-5 py-3 text-right font-mono text-xs text-slate-400">{{ article.total_views }}</td>
+                <td class="px-5 py-3 text-right font-mono text-xs text-slate-400">{{ article.unique_views_24h }}</td>
+                <td class="px-5 py-3 text-right font-mono text-xs text-slate-400">{{ article.email_sent }}</td>
+                <td class="px-5 py-3 text-right font-mono text-xs text-slate-400">{{ article.email_opens }}</td>
+                <td class="px-5 py-3 text-right font-mono text-xs text-slate-400">{{ article.email_clicks }}</td>
+                <td class="px-5 py-3 text-right font-mono text-xs text-emerald-400">{{ article.email_open_rate.toFixed(1) }}%</td>
+                <td class="px-5 py-3 text-right font-mono text-xs text-primary-400">{{ article.email_ctr.toFixed(1) }}%</td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-if="performanceData.length === 0" class="px-6 py-10 text-center">
+            <p class="text-slate-500 font-mono text-sm">No articles yet.</p>
+          </div>
         </div>
       </div>
     </div>

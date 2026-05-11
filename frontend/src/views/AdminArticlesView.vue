@@ -47,6 +47,8 @@
             <th class="px-5 py-4 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Title</th>
             <th class="px-5 py-4 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Slug</th>
             <th class="px-5 py-4 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Status</th>
+            <th class="px-5 py-4 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Views</th>
+            <th class="px-5 py-4 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Email CTR</th>
             <th class="px-5 py-4 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Published</th>
             <th class="px-5 py-4 text-right font-medium text-slate-500 text-xs uppercase tracking-wider">Actions</th>
           </tr>
@@ -78,6 +80,12 @@
                 />
                 {{ article.status }}
               </span>
+            </td>
+            <td class="px-5 py-4 font-mono text-xs text-slate-400">
+              {{ article.total_views ?? 0 }}
+            </td>
+            <td class="px-5 py-4 font-mono text-xs text-slate-400">
+              {{ article.email_ctr != null ? article.email_ctr.toFixed(1) + '%' : '—' }}
             </td>
             <td class="px-5 py-4 font-mono text-xs text-slate-500">
               {{ article.published_at ? formatDate(article.published_at) : '—' }}
@@ -124,7 +132,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { fetchAdminArticles, deleteArticle } from '@/composables/useAdminApi'
+import { fetchAdminArticles, deleteArticle, getAuthHeaders } from '@/composables/useAdminApi'
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 const articles = ref<any[]>([])
 const loading = ref(true)
@@ -136,7 +146,16 @@ function formatDate(dateStr: string): string {
 
 async function loadArticles() {
   try {
-    articles.value = await fetchAdminArticles()
+    const [articlesList, performanceList] = await Promise.all([
+      fetchAdminArticles(),
+      fetch(`${API_BASE}/api/admin/articles/performance`, { headers: getAuthHeaders() }).then(r => r.json()),
+    ])
+
+    const perfMap = new Map(performanceList.map((p: any) => [p.id, p]))
+    articles.value = articlesList.map((a: any) => {
+      const perf = perfMap.get(a.id)
+      return perf ? { ...a, ...perf } : a
+    })
   } catch (e: any) {
     error.value = e.message
   } finally {
