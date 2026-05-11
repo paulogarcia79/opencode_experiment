@@ -7,7 +7,7 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 ## Authentication & Authorization
 
 - [x] **Password-based login UI** — Replace bearer token with real username/password auth (JWT implemented)
-- [ ] **Password reset flow** — Email-based password reset for admin users
+- [x] **Password reset flow** — Email-based password reset for admin users (token-in-link, 15-min expiry, session invalidation via token_version, per-email cooldown, MJML email template)
 - [ ] **OAuth / SSO integration** — Google, GitHub, or Slack OAuth for admin access
 - [ ] **Multi-author support** — Multiple users with roles (admin, editor, contributor)
 - [ ] **Audit logging** — Track which admin performed each action
