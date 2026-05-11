@@ -4,6 +4,7 @@ from sqlmodel import Session
 from app.models.subscriber import Subscriber
 from app.models.article import Article
 from app.models.newsletter_send import NewsletterSend
+from app.config import settings
 import uuid
 
 
@@ -85,3 +86,41 @@ class TestWebhookIdempotency:
         session.refresh(send)
         # Both unique events should be processed
         assert send.open_count == 2
+
+
+class TestWebhookSignatureVerification:
+    def test_invalid_signature_rejected(self, client: TestClient, monkeypatch):
+        """Webhook with invalid Svix signature is rejected when secret is configured."""
+        monkeypatch.setattr(settings, "RESEND_WEBHOOK_SECRET", "whsec_test_secret_12345678901234567890123")
+
+        resp = client.post(
+            "/api/webhooks/resend",
+            json={"type": "email.opened", "data": {"tags": {}}},
+            headers={
+                "svix-id": "msg_test123",
+                "svix-timestamp": "1700000000",
+                "svix-signature": "v1,invalid_signature_here",
+            },
+        )
+        assert resp.status_code == 401
+
+    def test_missing_signature_rejected(self, client: TestClient, monkeypatch):
+        """Webhook without Svix headers is rejected when secret is configured."""
+        monkeypatch.setattr(settings, "RESEND_WEBHOOK_SECRET", "whsec_test_secret_12345678901234567890123")
+
+        resp = client.post(
+            "/api/webhooks/resend",
+            json={"type": "email.opened", "data": {"tags": {}}},
+        )
+        assert resp.status_code == 401
+
+    def test_no_secret_allows_processing(self, client: TestClient, monkeypatch):
+        """Webhook is processed without signature verification when secret is not configured."""
+        monkeypatch.setattr(settings, "RESEND_WEBHOOK_SECRET", "")
+
+        resp = client.post(
+            "/api/webhooks/resend",
+            json={"type": "email.opened", "data": {"tags": {"newsletter_send_id": str(uuid.uuid4())}}},
+        )
+        # Should not be 401 - either 200 or some other processing result
+        assert resp.status_code != 401

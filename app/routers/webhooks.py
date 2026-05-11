@@ -3,15 +3,44 @@ from sqlmodel import Session, select
 from app.database import get_session
 from app.models.email_event import EmailEvent
 from app.models.newsletter_send import NewsletterSend
+from app.config import settings
 from datetime import datetime
 import logging
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 logger = logging.getLogger(__name__)
 
+def _verify_svix_signature(request: Request, raw_body: bytes) -> bool:
+    """Verify Svix webhook signature. Returns True if valid or secret not configured."""
+    secret = settings.RESEND_WEBHOOK_SECRET
+    if not secret:
+        logger.warning("RESEND_WEBHOOK_SECRET not configured - skipping signature verification")
+        return True
+    
+    svix_id = request.headers.get("svix-id")
+    svix_timestamp = request.headers.get("svix-timestamp")
+    svix_signature = request.headers.get("svix-signature")
+    
+    if not all([svix_id, svix_timestamp, svix_signature]):
+        return False
+    
+    try:
+        from svix.webhooks import Webhook
+        webhook = Webhook(secret)
+        webhook.verify(raw_body, request.headers)
+        return True
+    except Exception as e:
+        logger.error(f"Svix signature verification failed: {e}")
+        return False
+
 @router.post("/resend")
 async def resend_webhook(request: Request, session: Session = Depends(get_session)):
+    raw_body = await request.body()
     payload = await request.json()
+    
+    if not _verify_svix_signature(request, raw_body):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    
     logger.info(f"Received Resend webhook: {payload}")
     
     # Resend sends an array of events or a single event depending on configuration

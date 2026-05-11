@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "super-secret-key-change-in-production"
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = "newsletter@example.com"
+    RESEND_WEBHOOK_SECRET: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
     APP_BASE_URL: str = "http://localhost:5173"
     ALLOWED_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:4173"]
