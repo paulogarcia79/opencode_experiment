@@ -25,6 +25,13 @@
               Articles
             </RouterLink>
             <RouterLink
+              to="/admin/import"
+              exact-active-class="text-primary-400"
+              class="text-sm text-slate-500 hover:text-white transition-colors duration-200 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-white/5"
+            >
+              Import
+            </RouterLink>
+            <RouterLink
               to="/admin/media"
               exact-active-class="text-primary-400"
               class="text-sm text-slate-500 hover:text-white transition-colors duration-200 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-white/5"

@@ -13,6 +13,7 @@ import AdminAnalyticsView from '@/views/AdminAnalyticsView.vue'
 import AdminArticleEditView from '@/views/AdminArticleEditView.vue'
 import AdminMediaView from '@/views/AdminMediaView.vue'
 import AdminTagsView from '@/views/AdminTagsView.vue'
+import AdminImportView from '@/views/AdminImportView.vue'
 import SearchView from '@/views/SearchView.vue'
 import TagArticlesView from '@/views/TagArticlesView.vue'
 
@@ -91,6 +92,11 @@ const router = createRouter({
           path: 'media',
           name: 'admin-media',
           component: AdminMediaView,
+        },
+        {
+          path: 'import',
+          name: 'admin-import',
+          component: AdminImportView,
         },
         {
           path: 'tags',
