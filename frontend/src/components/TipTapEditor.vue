@@ -137,6 +137,10 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
+import Table from '@tiptap/extension-table'
+import TableRow from '@tiptap/extension-table-row'
+import TableCell from '@tiptap/extension-table-cell'
+import TableHeader from '@tiptap/extension-table-header'
 import { uploadImage } from '@/composables/useImageUpload'
 
 const props = defineProps<{
@@ -163,6 +167,12 @@ const editor = useEditor({
       inline: true,
       allowBase64: false,
     }),
+    Table.configure({
+      resizable: true,
+    }),
+    TableRow,
+    TableCell,
+    TableHeader,
   ],
   content: props.modelValue,
   onUpdate: ({ editor }) => {
@@ -330,5 +340,32 @@ async function insertUploadedImage(file: File) {
 .ProseMirror .ProseMirror-selectednode img {
   outline: 2px solid #a78bfa;
   outline-offset: 2px;
+}
+
+/* Table styles */
+.ProseMirror table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+}
+.ProseMirror td,
+.ProseMirror th {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 0.75rem;
+  min-width: 100px;
+}
+.ProseMirror th {
+  background: rgba(124, 58, 237, 0.1);
+  font-weight: 600;
+}
+.ProseMirror td {
+  background: rgba(255, 255, 255, 0.02);
+}
+.ProseMirror .selectedCell:after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(124, 58, 237, 0.15);
+  pointer-events: none;
 }
 </style>

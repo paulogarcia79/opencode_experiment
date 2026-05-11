@@ -141,10 +141,11 @@ def _html_to_tiptap(html: str) -> dict:
                 children = self._wrap_text_children_in_paragraphs(children)
                 return {"type": "listItem", "content": children}
             elif node_type == "table":
+                children = self._filter_whitespace_children(children)
                 return {"type": "table", "content": children}
             elif node_type in ("tableHeader", "tableBody"):
                 children = self._filter_whitespace_children(children)
-                return {"type": node_type, "children": children}
+                return {"type": node_type, "content": children}
             elif node_type == "tableRow":
                 children = self._filter_whitespace_children(children)
                 return {"type": "tableRow", "content": children}
