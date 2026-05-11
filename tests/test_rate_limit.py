@@ -340,3 +340,86 @@ class TestArticleViewRateLimit:
         assert "Try again in" in data["detail"]
         assert response2.headers.get("Retry-After") is not None
         assert int(response2.headers["Retry-After"]) > 0
+
+
+class TestAdminBypass:
+    """Test that admin endpoints bypass rate limiting."""
+
+    def test_admin_endpoints_not_rate_limited(self):
+        """Admin endpoints should not be rate limited even with rapid requests."""
+        from app.main import app
+        from app.limiter import limiter
+
+        # Reset limiter state
+        limiter.reset()
+
+        # Use the test client with admin auth
+        with TestClient(app) as client:
+            # Make many rapid requests to an admin endpoint
+            # These should all succeed (not be rate limited)
+            for _ in range(15):
+                response = client.get(
+                    "/api/admin/articles",
+                    headers={"Authorization": "Bearer dev-token"}
+                )
+                # Should be 401 (invalid token) not 429 (rate limited)
+                assert response.status_code != 429, "Admin endpoint should not be rate limited"
+
+
+class TestIPExtraction:
+    """Test that IP extraction works correctly for rate limiting."""
+
+    def test_different_ips_have_separate_limits(self):
+        """Different IPs should have separate rate limit counters."""
+        from fastapi import FastAPI
+        from slowapi import Limiter
+        from slowapi.errors import RateLimitExceeded
+        from slowapi.middleware import SlowAPIMiddleware
+        from slowapi.util import get_remote_address
+        from starlette.requests import Request
+        from starlette.responses import JSONResponse
+
+        # Custom key function that reads from X-Forwarded-For
+        def get_ip(request: Request) -> str:
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                return forwarded.split(",")[0].strip()
+            return request.client.host
+
+        limiter = Limiter(
+            key_func=get_ip,
+            storage_uri="memory://",
+        )
+
+        app = FastAPI()
+
+        @app.exception_handler(RateLimitExceeded)
+        async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+            retry_after = exc.limit.limit.get_expiry()
+            return JSONResponse(
+                status_code=429,
+                content={"detail": f"Rate limit exceeded. Try again in {retry_after} seconds."},
+                headers={"Retry-After": str(retry_after)},
+            )
+
+        @app.get("/test")
+        @limiter.limit("1/minute")
+        async def test_endpoint(request: Request):
+            return {"ip": get_ip(request)}
+
+        app.state.limiter = limiter
+        app.add_middleware(SlowAPIMiddleware)
+
+        client = TestClient(app)
+
+        # Request from IP 1.2.3.4
+        response1 = client.get("/test", headers={"X-Forwarded-For": "1.2.3.4"})
+        assert response1.status_code == 200
+
+        # Same IP should be rate limited
+        response2 = client.get("/test", headers={"X-Forwarded-For": "1.2.3.4"})
+        assert response2.status_code == 429
+
+        # Different IP should NOT be rate limited
+        response3 = client.get("/test", headers={"X-Forwarded-For": "5.6.7.8"})
+        assert response3.status_code == 200
