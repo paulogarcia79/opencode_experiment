@@ -124,3 +124,57 @@ class TestWebhookSignatureVerification:
         )
         # Should not be 401 - either 200 or some other processing result
         assert resp.status_code != 401
+
+
+class TestBounceHandling:
+    def _make_bounce_event(self, send_id: str, bounce_type: str, email: str = None, svix_id: str = None) -> dict:
+        event = {
+            "type": "email.bounced",
+            "created_at": "2026-05-11T00:00:00.000Z",
+            "data": {
+                "to": [email or "test@example.com"],
+                "tags": {"newsletter_send_id": send_id},
+                "bounce": {
+                    "type": bounce_type,
+                    "subType": "Suppressed",
+                    "message": "The recipient's email address is invalid.",
+                },
+            },
+        }
+        if svix_id:
+            event["svix_id"] = svix_id
+        return event
+
+    def test_permanent_bounce_unsubscribes_subscriber(self, client: TestClient, session: Session):
+        """Permanent bounce sets subscriber status to unsubscribed."""
+        sub = _create_test_subscriber(session)
+        send = _create_test_send(session, sub)
+
+        event = self._make_bounce_event(str(send.id), "Permanent", email=sub.email, svix_id="msg_bounce_perm_1")
+
+        resp = client.post("/api/webhooks/resend", json=event)
+        assert resp.status_code == 200
+
+        session.refresh(sub)
+        assert sub.status == "unsubscribed"
+
+        session.refresh(send)
+        assert send.status == "failed"
+        assert "Permanent" in send.error_message
+
+    def test_transient_bounce_does_not_unsubscribe(self, client: TestClient, session: Session):
+        """Transient bounce does NOT change subscriber status."""
+        sub = _create_test_subscriber(session)
+        send = _create_test_send(session, sub)
+
+        event = self._make_bounce_event(str(send.id), "Transient", email=sub.email, svix_id="msg_bounce_transient_1")
+
+        resp = client.post("/api/webhooks/resend", json=event)
+        assert resp.status_code == 200
+
+        session.refresh(sub)
+        assert sub.status == "active"
+
+        session.refresh(send)
+        assert send.status == "failed"
+        assert "Transient" in send.error_message

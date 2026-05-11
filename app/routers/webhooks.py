@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 from app.database import get_session
 from app.models.email_event import EmailEvent
 from app.models.newsletter_send import NewsletterSend
+from app.models.subscriber import Subscriber
 from app.config import settings
 from datetime import datetime
 import logging
@@ -98,7 +99,20 @@ async def resend_webhook(request: Request, session: Session = Depends(get_sessio
                         send_record.clicked_at = email_event.timestamp
                 elif event_type == "email.bounced":
                     send_record.status = "failed"
-                    send_record.error_message = "Bounced"
+                    bounce_info = data.get("bounce", {})
+                    bounce_type = bounce_info.get("type", "Unknown")
+                    bounce_message = bounce_info.get("message", "Bounced")
+                    send_record.error_message = f"Bounced ({bounce_type}): {bounce_message}"
+                    
+                    # Unsubscribe on permanent bounce
+                    if bounce_type == "Permanent":
+                        recipient_emails = data.get("to", [])
+                        for email_addr in recipient_emails:
+                            sub = session.exec(select(Subscriber).where(Subscriber.email == email_addr)).first()
+                            if sub and sub.status != "unsubscribed":
+                                sub.status = "unsubscribed"
+                                session.add(sub)
+                                logger.info(f"Unsubscribed {email_addr} due to permanent bounce")
                 
                 session.add(send_record)
                 
