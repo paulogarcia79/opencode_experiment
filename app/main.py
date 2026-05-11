@@ -1,12 +1,15 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.database import create_db_and_tables, get_session
 from app.routers import articles, subscribers, images, auth, analytics, webhooks
 from app.routers.analytics import article_analytics_router
 from app.models import User, Article, Subscriber, NewsletterSend, ImageAsset, Tag, ArticleTag
 from app.services.seed_service import seed_default_admin
+from app.limiter import get_limiter, rate_limit_exceeded_handler
 from arq import create_pool
 from app.redis import get_redis_settings
 
@@ -29,6 +32,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Blog + Newsletter Platform", version="0.1.0", lifespan=lifespan)
 
+limiter = get_limiter()
+app.state.limiter = limiter
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -36,6 +42,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(SlowAPIMiddleware)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.include_router(auth.router)
 app.include_router(articles.router)

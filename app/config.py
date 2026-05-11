@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     SITE_LOGO_URL: str = "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?w=300&h=300&fit=crop" # Placeholder neon logo
     BRAND_PRIMARY_COLOR: str = "#7C3AED"
 
+    # Rate limiting
+    RATE_LIMIT_SEARCH: str = "10/minute"
+    RATE_LIMIT_SUBSCRIBE: str = "3/minute"
+    RATE_LIMIT_ARTICLE_VIEW: str = "30/minute"
+
     class Config:
         env_file = ".env"
         extra = "ignore"
