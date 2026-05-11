@@ -149,7 +149,7 @@ def test_reset_password_invalid_token(client: TestClient, session: Session):
 
 def test_reset_password_expired_token(client: TestClient, session: Session):
     """Reset password with expired token returns 400."""
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from app.models.user import User
     from sqlmodel import select
     from app.services.auth_service import generate_reset_token, pwd_context
@@ -158,7 +158,7 @@ def test_reset_password_expired_token(client: TestClient, session: Session):
     plaintext = generate_reset_token(user, session)
 
     # Manually expire the token
-    user.reset_token_expires_at = datetime.utcnow() - timedelta(minutes=1)
+    user.reset_token_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
     session.add(user)
     session.commit()
 

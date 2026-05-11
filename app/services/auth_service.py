@@ -1,6 +1,6 @@
 import jwt
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from app.config import settings
 
@@ -15,9 +15,9 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(days=8)
+        expire = datetime.now(timezone.utc) + timedelta(days=8)
     
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm="HS256")
@@ -32,7 +32,7 @@ def generate_reset_token(user, session) -> str:
     plaintext = secrets.token_urlsafe(32)
     hashed = pwd_context.hash(plaintext)
     user.reset_token_hash = hashed
-    user.reset_token_expires_at = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRY_MINUTES)
+    user.reset_token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRY_MINUTES)
     session.add(user)
     session.commit()
     return plaintext
@@ -48,7 +48,11 @@ def validate_reset_token(token: str, session):
             continue
         if user.reset_token_expires_at is None:
             continue
-        if user.reset_token_expires_at < datetime.utcnow():
+        # Handle both naive and aware datetimes for SQLite compatibility
+        expires_at = user.reset_token_expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
             continue
         if pwd_context.verify(token, user.reset_token_hash):
             return user

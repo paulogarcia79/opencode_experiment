@@ -33,10 +33,10 @@ def test_autosave_existing_draft(client: TestClient, session, admin_token):
 def test_autosave_keeps_draft_status(client: TestClient, session, admin_token):
     """Auto-save must never publish an article, even if status is passed."""
     from app.services.article_service import create_article, update_article
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     article = create_article(session, "Draft", {"type": "doc"})
-    update_article(session, article, status="published", published_at=datetime.utcnow())
+    update_article(session, article, status="published", published_at=datetime.now(timezone.utc))
 
     response = client.put(
         f"/api/admin/articles/{article.id}/autosave",

@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.models.user import User
 from sqlmodel import select
 
@@ -54,14 +54,14 @@ class TestGenerateResetToken:
         generate_reset_token(user, session)
 
         # Manually set expiry to the past
-        user.reset_token_expires_at = datetime.utcnow() - timedelta(minutes=1)
+        user.reset_token_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
         session.add(user)
         session.commit()
 
         # We need the plaintext token, but we already generated it.
         # Generate a new one and then expire it.
         plaintext = generate_reset_token(user, session)
-        user.reset_token_expires_at = datetime.utcnow() - timedelta(minutes=1)
+        user.reset_token_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
         session.add(user)
         session.commit()
 

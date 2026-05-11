@@ -34,11 +34,11 @@ def test_create_article_slug_collision(client: TestClient, admin_token):
 
 def test_list_articles_only_published(client: TestClient, session, admin_token):
     from app.services.article_service import create_article, update_article
-    from datetime import datetime
+    from datetime import datetime, timezone
     
     draft = create_article(session, "Draft Article", {"type": "doc"})
     published = create_article(session, "Published Article", {"type": "doc"})
-    update_article(session, published, status="published", published_at=datetime.utcnow())
+    update_article(session, published, status="published", published_at=datetime.now(timezone.utc))
     
     response = client.get("/api/articles")
     assert response.status_code == 200
@@ -48,10 +48,10 @@ def test_list_articles_only_published(client: TestClient, session, admin_token):
 
 def test_get_article_by_slug(client: TestClient, session, admin_token):
     from app.services.article_service import create_article, update_article
-    from datetime import datetime
+    from datetime import datetime, timezone
     
     article = create_article(session, "My Article", {"type": "doc"})
-    update_article(session, article, status="published", published_at=datetime.utcnow())
+    update_article(session, article, status="published", published_at=datetime.now(timezone.utc))
     
     response = client.get(f"/api/articles/{article.slug}")
     assert response.status_code == 200
@@ -92,10 +92,10 @@ def test_publish_article(client: TestClient, session, admin_token):
 
 def test_unpublish_article_fails(client: TestClient, session, admin_token):
     from app.services.article_service import create_article, update_article
-    from datetime import datetime
+    from datetime import datetime, timezone
     
     article = create_article(session, "Published", {"type": "doc"})
-    update_article(session, article, status="published", published_at=datetime.utcnow())
+    update_article(session, article, status="published", published_at=datetime.now(timezone.utc))
     
     response = client.put(
         f"/api/articles/{article.id}",
@@ -158,10 +158,10 @@ def test_admin_list_all_articles(client: TestClient, session, admin_token):
 
 def test_rss_feed(client: TestClient, session, admin_token):
     from app.services.article_service import create_article, update_article
-    from datetime import datetime
+    from datetime import datetime, timezone
     
     article = create_article(session, "RSS Test Article", {"type": "doc", "content": [{"type": "text", "text": "Hello world"}]})
-    update_article(session, article, status="published", published_at=datetime.utcnow(), description="A test article for RSS.")
+    update_article(session, article, status="published", published_at=datetime.now(timezone.utc), description="A test article for RSS.")
     
     response = client.get("/feed.xml")
     assert response.status_code == 200
@@ -185,10 +185,10 @@ def test_rss_feed_excludes_drafts(client: TestClient, session, admin_token):
 
 def test_sitemap_xml(client: TestClient, session, admin_token):
     from app.services.article_service import create_article, update_article
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     article = create_article(session, "Sitemap Article", {"type": "doc"})
-    update_article(session, article, status="published", published_at=datetime.utcnow())
+    update_article(session, article, status="published", published_at=datetime.now(timezone.utc))
 
     response = client.get("/sitemap.xml")
     assert response.status_code == 200
@@ -214,7 +214,7 @@ def test_sitemap_excludes_drafts(client: TestClient, session, admin_token):
 
 def test_sitemap_lastmod_for_homepage_uses_latest_published_at(client: TestClient, session, admin_token):
     from app.services.article_service import create_article, update_article
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     article = create_article(session, "Homepage Lastmod", {"type": "doc"})
     update_article(session, article, status="published", published_at=datetime(2025, 1, 15, 10, 0, 0))

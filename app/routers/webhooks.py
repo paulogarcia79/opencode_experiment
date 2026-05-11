@@ -5,7 +5,7 @@ from app.models.email_event import EmailEvent
 from app.models.newsletter_send import NewsletterSend
 from app.models.subscriber import Subscriber
 from app.config import settings
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
@@ -87,7 +87,7 @@ async def resend_webhook(request: Request, session: Session = Depends(get_sessio
             email_event = EmailEvent(
                 newsletter_send_id=send_id,
                 event_type=event_type,
-                timestamp=datetime.fromisoformat(created_at_str.replace("Z", "+00:00")) if created_at_str else datetime.utcnow(),
+                timestamp=datetime.fromisoformat(created_at_str.replace("Z", "+00:00")) if created_at_str else datetime.now(timezone.utc),
                 raw_payload=event,
                 svix_id=svix_id,
             )

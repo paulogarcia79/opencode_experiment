@@ -1,7 +1,7 @@
 import os
 import shutil
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -16,7 +16,7 @@ class LocalFileSystemStorage:
 
     def _generate_path(self, filename: str) -> Path:
         """Generate a storage path with year/month directory layout."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         dir_path = self.base_dir / str(now.year) / f"{now.month:02d}"
         dir_path.mkdir(parents=True, exist_ok=True)
         # Use UUID prefix to avoid collisions

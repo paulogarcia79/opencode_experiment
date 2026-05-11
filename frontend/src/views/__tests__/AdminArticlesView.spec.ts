@@ -5,6 +5,7 @@ import AdminArticlesView from '@/views/AdminArticlesView.vue'
 vi.mock('@/composables/useAdminApi', () => ({
   fetchAdminArticles: vi.fn(),
   deleteArticle: vi.fn(),
+  getAuthHeaders: vi.fn(() => ({ Authorization: 'Bearer test-token' })),
 }))
 
 vi.mock('vue-router', () => ({
@@ -22,6 +23,10 @@ describe('AdminArticlesView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('confirm', vi.fn())
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([]),
+    }))
   })
 
   it('shows loading state while fetching', () => {
