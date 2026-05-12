@@ -16,6 +16,7 @@ import AdminArticleEditView from '@/views/AdminArticleEditView.vue'
 import AdminMediaView from '@/views/AdminMediaView.vue'
 import AdminTagsView from '@/views/AdminTagsView.vue'
 import AdminImportView from '@/views/AdminImportView.vue'
+import AdminUsersView from '@/views/AdminUsersView.vue'
 import SearchView from '@/views/SearchView.vue'
 import TagArticlesView from '@/views/TagArticlesView.vue'
 
@@ -121,6 +122,12 @@ const router = createRouter({
           name: 'admin-settings',
           component: AdminSettingsView,
         },
+        {
+          path: 'users',
+          name: 'admin-users',
+          component: AdminUsersView,
+          meta: { requiresAdmin: true },
+        },
       ],
     },
   ],
@@ -142,6 +149,10 @@ router.beforeEach(async (to, _from, next) => {
         next('/admin/login')
         return
       }
+    }
+    if (to.meta.requiresAdmin && store.user?.role !== 'admin') {
+      next('/admin')
+      return
     }
     next()
   }

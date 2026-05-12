@@ -14,6 +14,10 @@ import {
   fetchRevisions,
   fetchRevision,
   restoreRevision,
+  fetchUsers,
+  inviteUser,
+  updateUserRole,
+  toggleUserActive,
 } from '@/composables/useAdminApi'
 import { useAdminStore } from '@/stores/admin'
 
@@ -424,6 +428,148 @@ describe('restoreRevision', () => {
     )
 
     await expect(restoreRevision('1', 999)).rejects.toThrow('Revision not found')
+    vi.restoreAllMocks()
+  })
+})
+
+describe('fetchUsers', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('fetches users with auth headers on success', async () => {
+    const mockData = [
+      { id: '1', email: 'admin@example.com', role: 'admin', is_active: true, is_verified: true, created_at: '2025-01-15T00:00:00Z' },
+    ]
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    )
+
+    const result = await fetchUsers()
+
+    expect(result).toEqual(mockData)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/admin/users',
+      expect.objectContaining({ headers: expect.any(Object) })
+    )
+    fetchSpy.mockRestore()
+  })
+
+  it('throws on error response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('Not Found', { status: 404 })
+    )
+
+    await expect(fetchUsers()).rejects.toThrow('Failed to fetch users')
+    vi.restoreAllMocks()
+  })
+})
+
+describe('inviteUser', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('sends invite with POST on success', async () => {
+    const mockData = { message: 'Invite sent to user@example.com' }
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    )
+
+    const result = await inviteUser('user@example.com', 'editor')
+
+    expect(result).toEqual(mockData)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/admin/users/invite',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ email: 'user@example.com', role: 'editor' }),
+      })
+    )
+    fetchSpy.mockRestore()
+  })
+
+  it('throws extracted error detail on error response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'User already exists' }), { status: 400 })
+    )
+
+    await expect(inviteUser('existing@example.com', 'editor')).rejects.toThrow('User already exists')
+    vi.restoreAllMocks()
+  })
+})
+
+describe('updateUserRole', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('updates role with PUT on success', async () => {
+    const mockData = { message: 'Role updated to admin' }
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    )
+
+    const result = await updateUserRole('user-1', 'admin')
+
+    expect(result).toEqual(mockData)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/admin/users/user-1/role',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ role: 'admin' }),
+      })
+    )
+    fetchSpy.mockRestore()
+  })
+
+  it('throws on error response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'User not found' }), { status: 404 })
+    )
+
+    await expect(updateUserRole('nonexistent', 'admin')).rejects.toThrow('User not found')
+    vi.restoreAllMocks()
+  })
+})
+
+describe('toggleUserActive', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('toggles active status with PUT on success', async () => {
+    const mockData = { message: 'User deactivated' }
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    )
+
+    const result = await toggleUserActive('user-1', false)
+
+    expect(result).toEqual(mockData)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/admin/users/user-1/active',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ is_active: false }),
+      })
+    )
+    fetchSpy.mockRestore()
+  })
+
+  it('throws on error response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'User not found' }), { status: 404 })
+    )
+
+    await expect(toggleUserActive('nonexistent', true)).rejects.toThrow('User not found')
     vi.restoreAllMocks()
   })
 })

@@ -1,5 +1,5 @@
 import { useAdminStore } from '@/stores/admin'
-import type { Article, ArticlePerformance, AnalyticsData, TagSuggestion, ImageAsset } from '@/types'
+import type { Article, ArticlePerformance, AnalyticsData, TagSuggestion, ImageAsset, User } from '@/types'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -271,4 +271,54 @@ export async function restoreRevision(articleId: string, versionNumber: number) 
     throw new Error(errorData.detail || 'Failed to restore revision')
   }
   return res.json()
+}
+
+export async function fetchUsers() {
+  const res = await fetch(`${API_BASE}/api/admin/users`, { headers: getAuthHeaders() })
+  if (!res.ok) throw new Error('Failed to fetch users')
+  return res.json() as Promise<User[]>
+}
+
+export interface InviteUserPayload {
+  email: string
+  role: string
+}
+
+export async function inviteUser(email: string, role: string) {
+  const res = await fetch(`${API_BASE}/api/admin/users/invite`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ email, role }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Failed to send invite')
+  }
+  return res.json() as Promise<{ message: string }>
+}
+
+export async function updateUserRole(userId: string, role: string) {
+  const res = await fetch(`${API_BASE}/api/admin/users/${userId}/role`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ role }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Failed to update role')
+  }
+  return res.json() as Promise<{ message: string }>
+}
+
+export async function toggleUserActive(userId: string, isActive: boolean) {
+  const res = await fetch(`${API_BASE}/api/admin/users/${userId}/active`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ is_active: isActive }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Failed to update user status')
+  }
+  return res.json() as Promise<{ message: string }>
 }
