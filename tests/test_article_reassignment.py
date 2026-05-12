@@ -144,7 +144,7 @@ class TestArticleReassignment:
         assert response.status_code == 400
         assert "inactive" in response.json()["detail"].lower()
 
-    def test_editor_can_reassign_article(self, client: TestClient, session: Session):
+    def test_editor_cannot_reassign_article(self, client: TestClient, session: Session):
         editor_token = _create_user_token(session, "editor_reassign@test.com", "editor")
         new_author_token = _create_user_token(session, "new_author_editor@test.com", "admin")
         new_author = session.exec(select(User).where(User.email == "new_author_editor@test.com")).first()
@@ -156,9 +156,8 @@ class TestArticleReassignment:
             json={"author_id": str(new_author.id)},
             headers=editor_token,
         )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["author"]["id"] == str(new_author.id)
+        assert response.status_code == 403
+        assert "permission" in response.json()["detail"].lower()
 
     def test_reassign_with_existing_author(self, client: TestClient, session: Session):
         admin_token = _create_user_token(session, "admin_existing@test.com", "admin")

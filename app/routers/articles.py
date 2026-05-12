@@ -492,11 +492,11 @@ def restore_article_revision_endpoint(article_id: UUID, version_number: int, ses
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in restored.tags]
     return response
 
-@router.put("/api/admin/articles/{article_id}/reassign", dependencies=[Depends(require_role(["admin", "editor"]))])
+@router.put("/api/admin/articles/{article_id}/reassign", dependencies=[Depends(require_role(["admin"]))])
 def reassign_article_endpoint(
     article_id: UUID,
     data: ArticleReassignRequest,
-    user=Depends(require_role(["admin", "editor"])),
+    user=Depends(require_role(["admin"])),
     session: Session = Depends(get_session),
 ):
     article = session.get(Article, article_id)
