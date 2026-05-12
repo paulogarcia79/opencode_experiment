@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlmodel import Session, select
 from app.database import get_session
-from app.dependencies import require_admin
+from app.dependencies import require_role
 from app.models.image_asset import ImageAsset
 from app.services.storage_service import storage
 from app.config import settings
@@ -31,7 +31,7 @@ def validate_image_file(file: UploadFile) -> None:
             detail=f"Invalid file extension. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
         )
 
-@router.post("/api/admin/images", response_model=dict, dependencies=[Depends(require_admin)])
+@router.post("/api/admin/images", response_model=dict, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 async def upload_image_endpoint(
     file: UploadFile = File(...),
     session: Session = Depends(get_session),
@@ -80,7 +80,7 @@ async def upload_image_endpoint(
         "mime_type": image_asset.mime_type,
     }
 
-@router.get("/api/admin/images", response_model=list[dict], dependencies=[Depends(require_admin)])
+@router.get("/api/admin/images", response_model=list[dict], dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def list_images_endpoint(
     skip: int = 0,
     limit: int = 50,
@@ -106,7 +106,7 @@ def list_images_endpoint(
         for image in images
     ]
 
-@router.delete("/api/admin/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+@router.delete("/api/admin/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def delete_image_endpoint(
     image_id: uuid.UUID,
     session: Session = Depends(get_session),

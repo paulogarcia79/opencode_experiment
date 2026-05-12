@@ -14,7 +14,7 @@ def seed_default_admin(session: Session) -> None:
         id=uuid.uuid4(),
         email=settings.ADMIN_EMAIL,
         hashed_password=get_password_hash(settings.ADMIN_PASSWORD),
-        is_admin=True,
+        role="admin",
         is_verified=True,
     )
     session.add(admin)

@@ -345,25 +345,18 @@ class TestArticleViewRateLimit:
 class TestAdminBypass:
     """Test that admin endpoints bypass rate limiting."""
 
-    def test_admin_endpoints_not_rate_limited(self):
+    def test_admin_endpoints_not_rate_limited(self, client: TestClient, admin_token: dict):
         """Admin endpoints should not be rate limited even with rapid requests."""
-        from app.main import app
-        from app.limiter import limiter
-
-        # Reset limiter state
-        limiter.reset()
-
-        # Use the test client with admin auth
-        with TestClient(app) as client:
-            # Make many rapid requests to an admin endpoint
-            # These should all succeed (not be rate limited)
-            for _ in range(15):
-                response = client.get(
-                    "/api/admin/articles",
-                    headers={"Authorization": "Bearer dev-token"}
-                )
-                # Should be 401 (invalid token) not 429 (rate limited)
-                assert response.status_code != 429, "Admin endpoint should not be rate limited"
+        # Make many rapid requests to an admin endpoint
+        # These should all succeed (not be rate limited)
+        for _ in range(15):
+            response = client.get(
+                "/api/admin/articles",
+                headers=admin_token
+            )
+            # Should be 200 (success) not 429 (rate limited)
+            assert response.status_code != 429, "Admin endpoint should not be rate limited"
+            assert response.status_code == 200
 
 
 class TestIPExtraction:

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response, UploadF
 from sqlmodel import Session, select, func
 from starlette.requests import Request
 from app.database import get_session
-from app.dependencies import require_admin, get_arq_pool
+from app.dependencies import require_role, get_arq_pool
 from arq.connections import ArqRedis
 from app.models import Article, NewsletterSend, Tag, ArticleTag, ArticleRevision
 from app.schemas import ArticleCreate, ArticleUpdate, ArticleAutoSave, TagRead, RevisionListRead, RevisionRead, ImportResult
@@ -172,7 +172,7 @@ Sitemap: {base_url}/sitemap.xml
 
 # Admin endpoints
 
-@router.post("/api/admin/articles", dependencies=[Depends(require_admin)])
+@router.post("/api/admin/articles", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def create_article_endpoint(
     data: ArticleCreate,
     session: Session = Depends(get_session),
@@ -190,7 +190,7 @@ def create_article_endpoint(
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
     return response
 
-@router.get("/api/admin/articles", response_model=list[Article], dependencies=[Depends(require_admin)])
+@router.get("/api/admin/articles", response_model=list[Article], dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def list_admin_articles_endpoint(skip: int = 0, limit: int = 50, session: Session = Depends(get_session)):
     from sqlmodel import select
     from sqlalchemy.orm import selectinload
@@ -203,14 +203,14 @@ def list_admin_articles_endpoint(skip: int = 0, limit: int = 50, session: Sessio
         .options(selectinload(Article.tags))
     ).all()
 
-@router.get("/api/admin/articles/performance", dependencies=[Depends(require_admin)])
+@router.get("/api/admin/articles/performance", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def get_articles_performance_list(session: Session = Depends(get_session)):
     from app.services.article_metrics_service import get_articles_metrics_batch
     
     articles = session.exec(select(Article)).all()
     return get_articles_metrics_batch(session, articles)
 
-@router.get("/api/admin/articles/{article_id}", dependencies=[Depends(require_admin)])
+@router.get("/api/admin/articles/{article_id}", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def get_admin_article_endpoint(article_id: UUID, session: Session = Depends(get_session)):
     article = session.get(Article, article_id)
     if not article:
@@ -219,7 +219,7 @@ def get_admin_article_endpoint(article_id: UUID, session: Session = Depends(get_
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
     return response
 
-@router.put("/api/articles/{article_id}", dependencies=[Depends(require_admin)])
+@router.put("/api/articles/{article_id}", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 async def update_article_endpoint(
     article_id: UUID,
     data: ArticleUpdate,
@@ -273,7 +273,7 @@ async def update_article_endpoint(
     
     return response_data
 
-@router.delete("/api/articles/{article_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+@router.delete("/api/articles/{article_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def delete_article_endpoint(article_id: UUID, session: Session = Depends(get_session)):
     article = session.get(Article, article_id)
     if not article:
@@ -281,7 +281,7 @@ def delete_article_endpoint(article_id: UUID, session: Session = Depends(get_ses
     delete_article(session, article)
     return None
 
-@router.post("/api/admin/articles/import", response_model=ImportResult, dependencies=[Depends(require_admin)])
+@router.post("/api/admin/articles/import", response_model=ImportResult, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 async def import_markdown_endpoint(
     files: list[UploadFile] = File(...),
     session: Session = Depends(get_session),
@@ -293,7 +293,7 @@ async def import_markdown_endpoint(
         file_contents.append((f.filename, content))
     return import_markdown_files(session, file_contents)
 
-@router.post("/api/admin/articles/autosave", dependencies=[Depends(require_admin)])
+@router.post("/api/admin/articles/autosave", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def autosave_create_article_endpoint(
     data: ArticleAutoSave,
     session: Session = Depends(get_session),
@@ -311,7 +311,7 @@ def autosave_create_article_endpoint(
     response_data["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
     return response_data
 
-@router.put("/api/admin/articles/{article_id}/autosave", dependencies=[Depends(require_admin)])
+@router.put("/api/admin/articles/{article_id}/autosave", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def autosave_article_endpoint(
     article_id: UUID,
     data: ArticleAutoSave,
@@ -343,7 +343,7 @@ def autosave_article_endpoint(
 
 # Tag admin endpoints
 
-@router.get("/api/admin/tags", dependencies=[Depends(require_admin)])
+@router.get("/api/admin/tags", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def list_tags_endpoint(q: Optional[str] = None, session: Session = Depends(get_session)):
     from sqlmodel import select, func
     statement = select(Tag)
@@ -365,7 +365,7 @@ def list_tags_endpoint(q: Optional[str] = None, session: Session = Depends(get_s
         result.append(tag_data)
     return result
 
-@router.delete("/api/admin/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+@router.delete("/api/admin/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def delete_tag_endpoint(tag_id: UUID, session: Session = Depends(get_session)):
     from sqlmodel import select, func
     tag = session.get(Tag, tag_id)
@@ -383,7 +383,7 @@ def delete_tag_endpoint(tag_id: UUID, session: Session = Depends(get_session)):
     session.commit()
     return None
 
-@router.post("/api/admin/articles/{article_id}/preview-email", dependencies=[Depends(require_admin)])
+@router.post("/api/admin/articles/{article_id}/preview-email", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def preview_email_endpoint(article_id: UUID, session: Session = Depends(get_session)):
     from app.services.email_service import send_newsletter_email, EmailServiceError
     article = session.get(Article, article_id)
@@ -401,14 +401,14 @@ def preview_email_endpoint(article_id: UUID, session: Session = Depends(get_sess
         )
     return {"message": "Preview sent successfully"}
 
-@router.get("/api/admin/articles/{article_id}/revisions", response_model=list[RevisionListRead], dependencies=[Depends(require_admin)])
+@router.get("/api/admin/articles/{article_id}/revisions", response_model=list[RevisionListRead], dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def list_article_revisions_endpoint(article_id: UUID, session: Session = Depends(get_session)):
     article = session.get(Article, article_id)
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
     return list_revisions(session, article_id)
 
-@router.get("/api/admin/articles/{article_id}/revisions/{version_number}", response_model=RevisionRead, dependencies=[Depends(require_admin)])
+@router.get("/api/admin/articles/{article_id}/revisions/{version_number}", response_model=RevisionRead, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def get_article_revision_endpoint(article_id: UUID, version_number: int, session: Session = Depends(get_session)):
     article = session.get(Article, article_id)
     if not article:
@@ -418,7 +418,7 @@ def get_article_revision_endpoint(article_id: UUID, version_number: int, session
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
     return revision
 
-@router.post("/api/admin/articles/{article_id}/revisions/{version_number}/restore", dependencies=[Depends(require_admin)])
+@router.post("/api/admin/articles/{article_id}/revisions/{version_number}/restore", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def restore_article_revision_endpoint(article_id: UUID, version_number: int, session: Session = Depends(get_session)):
     article = session.get(Article, article_id)
     if not article:
@@ -430,7 +430,7 @@ def restore_article_revision_endpoint(article_id: UUID, version_number: int, ses
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in restored.tags]
     return response
 
-@router.get("/api/admin/newsletter-blasts/{article_id}/status", dependencies=[Depends(require_admin)])
+@router.get("/api/admin/newsletter-blasts/{article_id}/status", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def get_newsletter_blast_status_endpoint(article_id: UUID, session: Session = Depends(get_session)):
     from sqlmodel import func, select
     
@@ -461,7 +461,7 @@ def get_newsletter_blast_status_endpoint(article_id: UUID, session: Session = De
         
     return results
 
-@router.get("/api/admin/templates/preview/{template_name}", dependencies=[Depends(require_admin)])
+@router.get("/api/admin/templates/preview/{template_name}", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def preview_template_endpoint(template_name: str):
     from app.services.email_renderer import render
     from app.config import settings

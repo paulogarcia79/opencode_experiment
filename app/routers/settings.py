@@ -2,19 +2,19 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 from app.database import get_session
-from app.dependencies import require_admin
+from app.dependencies import require_role
 from app.models.user import User
 from app.models.user_oauth_provider import UserOAuthProvider
 from app.services.oauth_service import OAuthService, SUPPORTED_PROVIDERS
 from app.config import settings
 
-router = APIRouter(prefix="/api/admin/settings", tags=["settings"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/api/admin/settings", tags=["settings"], dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 
 
 @router.get("/accounts")
 def get_connected_accounts(
     session: Session = Depends(get_session),
-    user: User = Depends(require_admin),
+    user: User = Depends(require_role(["admin", "editor", "contributor"])),
 ):
     """Get user's connected OAuth accounts."""
     providers = session.exec(
@@ -36,7 +36,7 @@ async def connect_oauth(
     provider: str,
     request: Request,
     session: Session = Depends(get_session),
-    user: User = Depends(require_admin),
+    user: User = Depends(require_role(["admin", "editor", "contributor"])),
 ):
     """Initiate OAuth connection for an existing user."""
     if provider not in SUPPORTED_PROVIDERS:
@@ -68,7 +68,7 @@ async def connect_oauth(
 def disconnect_oauth(
     provider: str,
     session: Session = Depends(get_session),
-    user: User = Depends(require_admin),
+    user: User = Depends(require_role(["admin", "editor", "contributor"])),
 ):
     """Disconnect an OAuth provider from the user's account."""
     if provider not in SUPPORTED_PROVIDERS:
