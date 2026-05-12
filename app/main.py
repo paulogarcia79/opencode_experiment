@@ -8,6 +8,7 @@ from app.database import create_db_and_tables, get_session
 from app.routers import articles, subscribers, images, auth, analytics, webhooks, oauth
 from app.routers.settings import router as settings_router
 from app.routers.analytics import article_analytics_router
+from app.routers.users import router as users_router
 from app.models import User, Article, Subscriber, NewsletterSend, ImageAsset, Tag, ArticleTag
 from app.services.seed_service import seed_default_admin
 from app.limiter import limiter, rate_limit_exceeded_handler
@@ -55,3 +56,4 @@ app.include_router(article_analytics_router)
 app.include_router(webhooks.router)
 app.include_router(oauth.router)
 app.include_router(settings_router)
+app.include_router(users_router)

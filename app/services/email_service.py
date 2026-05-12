@@ -152,14 +152,14 @@ def send_verification_email(email: str, verification_token: str) -> None:
     if not settings.RESEND_API_KEY:
         return
     verification_url = f"{settings.APP_BASE_URL}/api/auth/verify-email?token={verification_token}"
-    
+
     html = render("email_verification.mjml", {
         "verification_url": verification_url,
         "preview_text": "Verify your email address.",
     })
-    
+
     html, attachments = _process_cids(html)
-    
+
     try:
         params = {
             "from": settings.RESEND_FROM_EMAIL,
@@ -169,8 +169,36 @@ def send_verification_email(email: str, verification_token: str) -> None:
         }
         if attachments:
             params["attachments"] = attachments
-            
+
         resend.Emails.send(params)
     except Exception as e:
         logger.error(f"Failed to send verification email to {email}: {str(e)}")
+        raise EmailServiceError(str(e))
+
+def send_invite_email(email: str, setup_token: str, role: str) -> None:
+    if not settings.RESEND_API_KEY:
+        return
+    setup_url = f"{settings.APP_BASE_URL}/admin/setup?token={setup_token}"
+
+    html = render("invite.mjml", {
+        "setup_url": setup_url,
+        "role": role,
+        "preview_text": f"You've been invited to join {settings.SITE_NAME} as a {role}.",
+    })
+
+    html, attachments = _process_cids(html)
+
+    try:
+        params = {
+            "from": settings.RESEND_FROM_EMAIL,
+            "to": email,
+            "subject": f"You're invited to join {settings.SITE_NAME}",
+            "html": html,
+        }
+        if attachments:
+            params["attachments"] = attachments
+
+        resend.Emails.send(params)
+    except Exception as e:
+        logger.error(f"Failed to send invite email to {email}: {str(e)}")
         raise EmailServiceError(str(e))

@@ -1,0 +1,16 @@
+{% extends "base.mjml" %}
+
+{% block content %}
+<mj-text font-size="28px" font-weight="bold" padding-bottom="20px" color="#7C3AED" css-class="brand-title">
+  Welcome to {{ site_name }}
+</mj-text>
+<mj-text>
+  You've been invited to join <strong>{{ site_name }}</strong> as a <strong>{{ role }}</strong>. Click the button below to set up your account and create your password.
+</mj-text>
+<mj-button href="{{ setup_url }}" border-radius="12px" padding-top="30px" inner-padding="16px 32px" font-size="18px">
+  SET UP YOUR ACCOUNT
+</mj-button>
+<mj-text font-size="14px" color="#94a3b8" padding-top="40px" align="center">
+  This link will expire in 24 hours. If you didn't expect this invitation, you can safely ignore this email.
+</mj-text>
+{% endblock %}

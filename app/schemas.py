@@ -113,3 +113,32 @@ class ImportResult(BaseModel):
     successes: List[ImportSuccessItem]
     errors: List[ImportErrorItem]
     total: int
+
+class UserRead(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    email: str
+    role: str
+    is_active: bool
+    is_verified: bool
+    created_at: datetime
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def uuid_to_str(cls, v):
+        return str(v) if v is not None else v
+
+class InviteRequest(BaseModel):
+    email: str
+    role: str
+
+class RoleUpdateRequest(BaseModel):
+    role: str
+
+class ActiveUpdateRequest(BaseModel):
+    is_active: bool
+
+class SetupRequest(BaseModel):
+    token: str
+    password: str
