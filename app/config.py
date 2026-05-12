@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     RATE_LIMIT_SUBSCRIBE: str = "3/minute"
     RATE_LIMIT_ARTICLE_VIEW: str = "30/minute"
 
+    # OAuth
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
+
     class Config:
         env_file = ".env"
         extra = "ignore"

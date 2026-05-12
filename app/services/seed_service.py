@@ -15,6 +15,7 @@ def seed_default_admin(session: Session) -> None:
         email=settings.ADMIN_EMAIL,
         hashed_password=get_password_hash(settings.ADMIN_PASSWORD),
         is_admin=True,
+        is_verified=True,
     )
     session.add(admin)
     session.commit()

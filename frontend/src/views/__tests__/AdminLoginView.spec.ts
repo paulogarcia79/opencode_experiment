@@ -5,8 +5,10 @@ import AdminLoginView from '@/views/AdminLoginView.vue'
 import { useAdminStore } from '@/stores/admin'
 
 const mockPush = vi.fn()
+const mockRoute = { query: {} }
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: mockPush }),
+  useRoute: () => mockRoute,
   RouterLink: { template: '<a><slot /></a>', props: ['to'] },
 }))
 

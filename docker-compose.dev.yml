@@ -27,6 +27,10 @@ services:
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-newsletter@example.com}
       REDIS_URL: redis://redis:6379/0
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
     volumes:
       - ./app:/app/app
       - ./uploads:/app/uploads
@@ -49,6 +53,10 @@ services:
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-newsletter@example.com}
       REDIS_URL: redis://redis:6379/0
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
     volumes:
       - ./app:/app/app
       - ./uploads:/app/uploads

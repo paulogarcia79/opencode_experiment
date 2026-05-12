@@ -1,6 +1,8 @@
 # Blog + Newsletter Platform — Justfile
 # Install `just` first: https://github.com/casey/just
 
+set shell := ["bash", "-c"]
+
 # Default recipe — shows all available commands
 help:
     @just --list --unsorted
@@ -30,9 +32,13 @@ db:
         -p 5432:5432 \
         postgres:16-alpine 2>/dev/null || docker start blog-db
 
-# Run database migrations
+# Run database migrations (local)
 migrate:
     source .venv/bin/activate && alembic upgrade head
+
+# Run database migrations (Docker dev)
+migrate-docker:
+    docker compose -f docker-compose.dev.yml exec backend alembic upgrade head
 
 # Start backend dev server (http://localhost:8000)
 back:

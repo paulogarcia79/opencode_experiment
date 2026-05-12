@@ -47,4 +47,9 @@ async def require_admin(
         )
     
     # In this system, any valid user is an admin for now based on the PRD
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email not verified",
+        )
     return user

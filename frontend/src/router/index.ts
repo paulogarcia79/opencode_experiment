@@ -7,6 +7,8 @@ import UnsubscribeView from '@/views/UnsubscribeView.vue'
 import AdminLoginView from '@/views/AdminLoginView.vue'
 import ForgotPasswordView from '@/views/ForgotPasswordView.vue'
 import ResetPasswordView from '@/views/ResetPasswordView.vue'
+import VerifyEmailView from '@/views/VerifyEmailView.vue'
+import AdminSettingsView from '@/views/AdminSettingsView.vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import AdminArticlesView from '@/views/AdminArticlesView.vue'
 import AdminAnalyticsView from '@/views/AdminAnalyticsView.vue'
@@ -69,6 +71,12 @@ const router = createRouter({
       meta: { public: true },
     },
     {
+      path: '/admin/verify-email',
+      name: 'admin-verify-email',
+      component: VerifyEmailView,
+      meta: { public: true },
+    },
+    {
       path: '/admin',
       component: AdminLayout,
       meta: { requiresAuth: true },
@@ -107,6 +115,11 @@ const router = createRouter({
           path: 'analytics',
           name: 'admin-analytics',
           component: AdminAnalyticsView,
+        },
+        {
+          path: 'settings',
+          name: 'admin-settings',
+          component: AdminSettingsView,
         },
       ],
     },

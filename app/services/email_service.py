@@ -147,3 +147,30 @@ def send_password_reset_email(email: str, reset_token: str) -> None:
     except Exception as e:
         logger.error(f"Failed to send password reset email to {email}: {str(e)}")
         raise EmailServiceError(str(e))
+
+def send_verification_email(email: str, verification_token: str) -> None:
+    if not settings.RESEND_API_KEY:
+        return
+    verification_url = f"{settings.APP_BASE_URL}/api/auth/verify-email?token={verification_token}"
+    
+    html = render("email_verification.mjml", {
+        "verification_url": verification_url,
+        "preview_text": "Verify your email address.",
+    })
+    
+    html, attachments = _process_cids(html)
+    
+    try:
+        params = {
+            "from": settings.RESEND_FROM_EMAIL,
+            "to": email,
+            "subject": f"Verify your email for {settings.SITE_NAME}",
+            "html": html,
+        }
+        if attachments:
+            params["attachments"] = attachments
+            
+        resend.Emails.send(params)
+    except Exception as e:
+        logger.error(f"Failed to send verification email to {email}: {str(e)}")
+        raise EmailServiceError(str(e))

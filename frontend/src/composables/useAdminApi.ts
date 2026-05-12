@@ -121,6 +121,51 @@ export async function resetPassword(token: string, newPassword: string) {
   return res.json()
 }
 
+export async function resendVerification(email: string) {
+  const res = await fetch(`${API_BASE}/api/auth/resend-verification`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Failed to resend verification email')
+  }
+  return res.json()
+}
+
+export async function fetchConnectedAccounts() {
+  const res = await fetch(`${API_BASE}/api/admin/settings/accounts`, {
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch connected accounts')
+  return res.json()
+}
+
+export async function disconnectOAuth(provider: string) {
+  const res = await fetch(`${API_BASE}/api/admin/settings/accounts/oauth/${provider}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || `Failed to disconnect ${provider}`)
+  }
+  return res.json()
+}
+
+export async function connectOAuth(provider: string) {
+  const res = await fetch(`${API_BASE}/api/admin/settings/accounts/oauth/${provider}`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || `Failed to connect ${provider}`)
+  }
+  return res.json()
+}
+
 export interface RevisionListItem {
   version_number: number
   change_type: string

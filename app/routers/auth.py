@@ -1,16 +1,19 @@
 import time
+import secrets
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models.user import User
 from app.schemas import LoginRequest, ForgotPasswordRequest, ResetPasswordRequest
-from app.services.auth_service import verify_password, create_access_token, generate_reset_token, validate_reset_token, reset_password
-from app.services.email_service import send_password_reset_email
+from app.services.auth_service import verify_password, create_access_token, generate_reset_token, validate_reset_token, reset_password, pwd_context
+from app.services.email_service import send_password_reset_email, send_verification_email
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # In-memory cooldown: email -> last_request_timestamp
 _forgot_password_cooldown: dict[str, float] = {}
+_verification_cooldown: dict[str, float] = {}
 COOLDOWN_SECONDS = 60
 
 @router.post("/login")
@@ -67,3 +70,90 @@ def reset_password(request: ResetPasswordRequest, session: Session = Depends(get
     do_reset_password(user, request.new_password, session)
     
     return {"message": "Password reset successfully."}
+
+
+class VerifyEmailRequest:
+    token: str
+
+class ResendVerificationRequest:
+    email: str
+
+
+@router.post("/verify-email")
+def verify_email(request: dict, session: Session = Depends(get_session)):
+    token = request.get("token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token is required.",
+        )
+
+    # Find user with matching verification token
+    users = session.exec(select(User)).all()
+    matched_user = None
+    for user in users:
+        if user.verification_token_hash is None:
+            continue
+        if user.verification_token_expires_at is None:
+            continue
+        if user.is_verified:
+            continue
+        expires_at = user.verification_token_expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            continue
+        if pwd_context.verify(token, user.verification_token_hash):
+            matched_user = user
+            break
+
+    if matched_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token.",
+        )
+
+    # Mark as verified and clear token
+    matched_user.is_verified = True
+    matched_user.verification_token_hash = None
+    matched_user.verification_token_expires_at = None
+    session.add(matched_user)
+    session.commit()
+
+    # Generate JWT for immediate login
+    access_token = create_access_token(
+        data={"sub": str(matched_user.id), "token_version": matched_user.token_version}
+    )
+    return {"token": access_token, "type": "bearer"}
+
+
+@router.post("/resend-verification")
+def resend_verification(request: dict, session: Session = Depends(get_session)):
+    email = request.get("email", "").lower().strip()
+    
+    # Check cooldown
+    now = time.time()
+    last_request = _verification_cooldown.get(email)
+    if last_request and (now - last_request) < COOLDOWN_SECONDS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Please wait before requesting another verification email.",
+        )
+    
+    user = session.exec(select(User).where(User.email == email)).first()
+    
+    if user and not user.is_verified:
+        # Generate new verification token
+        plaintext = secrets.token_urlsafe(32)
+        hashed = pwd_context.hash(plaintext)
+        user.verification_token_hash = hashed
+        user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+        session.add(user)
+        session.commit()
+        
+        send_verification_email(user.email, plaintext)
+    
+    # Always update cooldown (no enumeration)
+    _verification_cooldown[email] = now
+    
+    return {"message": "If an unverified account exists with that email, a verification link has been sent"}
