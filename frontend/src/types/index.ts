@@ -1,5 +1,7 @@
 import type { JSONContent } from '@tiptap/vue-3'
 
+export type Role = 'admin' | 'editor' | 'contributor'
+
 export interface Tag {
   id: string
   name: string
@@ -11,7 +13,7 @@ export interface Tag {
 export interface User {
   id: string
   email: string
-  role: string
+  role: Role
   is_active: boolean
   is_verified: boolean
   created_at: string

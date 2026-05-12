@@ -5,10 +5,12 @@ from typing import Optional, List
 from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 from app.models.article import Article
+from app.models.article_revision import ArticleRevision
 from app.models.tag import Tag
 from app.services.content_service import auto_generate_description, extract_plain_text_from_tiptap
 from app.services.search_service import build_search_text
 from app.services.tag_service import get_or_create_tags
+from app.services.revision_service import _next_version_number
 
 def generate_slug(title: str, session: Session) -> str:
     """Generate a unique URL slug from a title."""
@@ -126,8 +128,9 @@ def reassign_article(
     session: Session,
     article: Article,
     new_author_id: uuid.UUID,
+    actor_id: Optional[uuid.UUID] = None,
 ) -> Article:
-    """Reassign an article to a new author and create a revision."""
+    """Reassign an article to a new author and create a revision in a single transaction."""
     from app.models.user import User
     from app.services.revision_service import create_revision
 
@@ -142,18 +145,25 @@ def reassign_article(
 
     article.author_id = new_author_id
     session.add(article)
-    session.commit()
-    session.refresh(article)
 
-    # Create revision with reassign metadata
-    revision = create_revision(session, article, "reassign")
-    revision.reassign_metadata = {
-        "old_author_id": str(old_author_id) if old_author_id else None,
-        "new_author_id": str(new_author_id),
-    }
+    # Create revision with reassign metadata in same transaction
+    revision = ArticleRevision(
+        article_id=article.id,
+        version_number=_next_version_number(session, article.id),
+        title=article.title,
+        content=article.content,
+        description=article.description,
+        tag_names=[tag.name for tag in article.tags],
+        change_type="reassign",
+        author_id=actor_id,
+        reassign_metadata={
+            "old_author_id": str(old_author_id) if old_author_id else None,
+            "new_author_id": str(new_author_id),
+        },
+    )
     session.add(revision)
     session.commit()
-    session.refresh(revision)
+    session.refresh(article)
 
     return session.exec(
         select(Article).where(Article.id == article.id).options(selectinload(Article.tags), selectinload(Article.author))

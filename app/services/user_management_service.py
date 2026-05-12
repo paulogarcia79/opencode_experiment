@@ -46,9 +46,10 @@ def complete_setup(user: User, password: str, session: Session) -> None:
 
 
 def create_invited_user(email: str, role: str, session: Session) -> User:
+    unusable_password = pwd_context.hash(secrets.token_urlsafe(32))
     user = User(
         email=email.lower().strip(),
-        hashed_password="",
+        hashed_password=unusable_password,
         role=role,
         is_active=True,
         is_verified=False,

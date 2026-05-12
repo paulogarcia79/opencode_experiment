@@ -2,30 +2,14 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 from app.models.user import User
-from app.services.auth_service import create_access_token, get_password_hash
-
-
-def _create_user_token(session: Session, email: str, role: str, is_active: bool = True, is_verified: bool = True) -> dict:
-    """Create a user and return auth headers."""
-    user = User(
-        email=email,
-        hashed_password=get_password_hash("password123"),
-        role=role,
-        is_active=is_active,
-        is_verified=is_verified,
-    )
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    token = create_access_token(data={"sub": str(user.id), "token_version": user.token_version})
-    return {"Authorization": f"Bearer {token}"}
+from tests.conftest import create_user, create_user_token
 
 
 class TestContributorArticlePermissions:
     """Integration tests for contributor role permissions on articles."""
 
     def test_contributor_can_create_article(self, client: TestClient, session: Session):
-        contributor_token = _create_user_token(session, "contributor@test.com", "contributor")
+        contributor_token = create_user_token(session, "contributor@test.com", "contributor")
         response = client.post(
             "/api/admin/articles",
             json={"title": "Contributor Article", "content": {"type": "doc"}, "send_newsletter": False},
@@ -37,7 +21,7 @@ class TestContributorArticlePermissions:
         assert data["status"] == "draft"
 
     def test_contributor_can_edit_own_article(self, client: TestClient, session: Session):
-        contributor_token = _create_user_token(session, "contributor2@test.com", "contributor")
+        contributor_token = create_user_token(session, "contributor2@test.com", "contributor")
         user = session.exec(select(User).where(User.email == "contributor2@test.com")).first()
         
         from app.services.article_service import create_article
@@ -52,8 +36,8 @@ class TestContributorArticlePermissions:
         assert response.json()["title"] == "Updated Title"
 
     def test_contributor_cannot_edit_others_article(self, client: TestClient, session: Session):
-        contributor_token = _create_user_token(session, "contributor3@test.com", "contributor")
-        other_token = _create_user_token(session, "other@test.com", "contributor")
+        contributor_token = create_user_token(session, "contributor3@test.com", "contributor")
+        other_token = create_user_token(session, "other@test.com", "contributor")
         other_user = session.exec(select(User).where(User.email == "other@test.com")).first()
         
         from app.services.article_service import create_article
@@ -68,7 +52,7 @@ class TestContributorArticlePermissions:
         assert "permission" in response.json()["detail"].lower()
 
     def test_contributor_cannot_publish_own_article(self, client: TestClient, session: Session):
-        contributor_token = _create_user_token(session, "contributor4@test.com", "contributor")
+        contributor_token = create_user_token(session, "contributor4@test.com", "contributor")
         user = session.exec(select(User).where(User.email == "contributor4@test.com")).first()
         
         from app.services.article_service import create_article
@@ -83,7 +67,7 @@ class TestContributorArticlePermissions:
         assert "permission" in response.json()["detail"].lower()
 
     def test_contributor_cannot_delete_own_article(self, client: TestClient, session: Session):
-        contributor_token = _create_user_token(session, "contributor5@test.com", "contributor")
+        contributor_token = create_user_token(session, "contributor5@test.com", "contributor")
         user = session.exec(select(User).where(User.email == "contributor5@test.com")).first()
         
         from app.services.article_service import create_article
@@ -94,8 +78,8 @@ class TestContributorArticlePermissions:
         assert "permission" in response.json()["detail"].lower()
 
     def test_contributor_cannot_delete_others_article(self, client: TestClient, session: Session):
-        contributor_token = _create_user_token(session, "contributor6@test.com", "contributor")
-        other_token = _create_user_token(session, "other2@test.com", "contributor")
+        contributor_token = create_user_token(session, "contributor6@test.com", "contributor")
+        other_token = create_user_token(session, "other2@test.com", "contributor")
         other_user = session.exec(select(User).where(User.email == "other2@test.com")).first()
         
         from app.services.article_service import create_article
@@ -105,7 +89,7 @@ class TestContributorArticlePermissions:
         assert response.status_code == 403
 
     def test_contributor_can_autosave_own_article(self, client: TestClient, session: Session):
-        contributor_token = _create_user_token(session, "contributor7@test.com", "contributor")
+        contributor_token = create_user_token(session, "contributor7@test.com", "contributor")
         user = session.exec(select(User).where(User.email == "contributor7@test.com")).first()
         
         from app.services.article_service import create_article
@@ -120,19 +104,8 @@ class TestContributorArticlePermissions:
         assert response.json()["title"] == "Autosaved"
 
     def test_contributor_cannot_autosave_others_article(self, client: TestClient, session: Session):
-        contributor_token = _create_user_token(session, "contributor8@test.com", "contributor")
-        other_user = session.exec(select(User).where(User.email == "other3@test.com")).first()
-        if other_user is None:
-            other_user = User(
-                email="other3@test.com",
-                hashed_password=get_password_hash("password123"),
-                role="contributor",
-                is_active=True,
-                is_verified=True,
-            )
-            session.add(other_user)
-            session.commit()
-            session.refresh(other_user)
+        contributor_token = create_user_token(session, "contributor8@test.com", "contributor")
+        other_user = create_user(session, "other3@test.com", role="contributor")
         
         from app.services.article_service import create_article
         article = create_article(session, "Other's Autosave", {"type": "doc"}, author_id=other_user.id)
@@ -145,8 +118,8 @@ class TestContributorArticlePermissions:
         assert response.status_code == 403
 
     def test_editor_can_edit_any_article(self, client: TestClient, session: Session):
-        editor_token = _create_user_token(session, "editor@test.com", "editor")
-        contributor_token = _create_user_token(session, "contributor9@test.com", "contributor")
+        editor_token = create_user_token(session, "editor@test.com", "editor")
+        contributor_token = create_user_token(session, "contributor9@test.com", "contributor")
         contributor = session.exec(select(User).where(User.email == "contributor9@test.com")).first()
         
         from app.services.article_service import create_article
@@ -161,8 +134,8 @@ class TestContributorArticlePermissions:
         assert response.json()["title"] == "Editor Updated"
 
     def test_editor_can_delete_any_article(self, client: TestClient, session: Session):
-        editor_token = _create_user_token(session, "editor2@test.com", "editor")
-        contributor_token = _create_user_token(session, "contributor10@test.com", "contributor")
+        editor_token = create_user_token(session, "editor2@test.com", "editor")
+        contributor_token = create_user_token(session, "contributor10@test.com", "contributor")
         contributor = session.exec(select(User).where(User.email == "contributor10@test.com")).first()
         
         from app.services.article_service import create_article
@@ -172,8 +145,8 @@ class TestContributorArticlePermissions:
         assert response.status_code == 204
 
     def test_admin_can_edit_any_article(self, client: TestClient, session: Session):
-        admin_token = _create_user_token(session, "admin2@test.com", "admin")
-        contributor_token = _create_user_token(session, "contributor11@test.com", "contributor")
+        admin_token = create_user_token(session, "admin2@test.com", "admin")
+        contributor_token = create_user_token(session, "contributor11@test.com", "contributor")
         contributor = session.exec(select(User).where(User.email == "contributor11@test.com")).first()
         
         from app.services.article_service import create_article

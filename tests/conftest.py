@@ -46,3 +46,35 @@ def admin_token_fixture(session: Session) -> dict:
     admin = session.exec(select(User)).first()
     token = create_access_token(data={"sub": str(admin.id), "token_version": admin.token_version})
     return {"Authorization": f"Bearer {token}"}
+
+
+def create_user(session: Session, email: str, role: str = "contributor", is_active: bool = True, is_verified: bool = True) -> "User":
+    """Create a test user and return it."""
+    from app.models.user import User
+    from app.services.auth_service import get_password_hash
+    user = User(
+        email=email,
+        hashed_password=get_password_hash("test-password"),
+        role=role,
+        is_active=is_active,
+        is_verified=is_verified,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+def create_user_token(session: Session, email: str, role: str = "contributor") -> dict:
+    """Create a test user and return auth headers."""
+    from app.services.auth_service import create_access_token
+    user = create_user(session, email, role)
+    token = create_access_token(data={"sub": str(user.id), "token_version": user.token_version})
+    return {"Authorization": f"Bearer {token}"}
+
+
+def get_token_for_user(user: "User") -> dict:
+    """Return auth headers for an existing user."""
+    from app.services.auth_service import create_access_token
+    token = create_access_token(data={"sub": str(user.id), "token_version": user.token_version})
+    return {"Authorization": f"Bearer {token}"}

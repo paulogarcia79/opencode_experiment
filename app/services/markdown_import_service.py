@@ -385,12 +385,14 @@ def _extract_frontmatter(content: str, filename: str) -> dict:
 def import_markdown_files(
     session: Session,
     files: list[tuple[str, bytes]],
+    author_id: Optional[uuid.UUID] = None,
 ) -> ImportResult:
     """Import multiple markdown files as draft articles.
 
     Args:
         session: Database session
         files: List of (filename, content_bytes) tuples
+        author_id: Optional author ID to assign to imported articles
 
     Returns:
         ImportResult with successes and errors
@@ -448,6 +450,7 @@ def import_markdown_files(
                 description=metadata.get("description"),
                 send_newsletter=False,
                 tag_names=metadata.get("tags", []),
+                author_id=author_id,
             )
             successes.append(ImportSuccessItem(
                 id=str(article.id),

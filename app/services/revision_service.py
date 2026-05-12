@@ -75,6 +75,7 @@ def restore_revision(
     session: Session,
     article: Article,
     version_number: int,
+    author_id: Optional[uuid.UUID] = None,
 ) -> Article:
     """Restore an article to a previous revision state.
 
@@ -109,7 +110,7 @@ def restore_revision(
         .options(selectinload(Article.tags))
     ).first()
 
-    create_revision(session, article, "restore")
+    create_revision(session, article, "restore", author_id=author_id)
     return session.exec(
         select(Article)
         .where(Article.id == article.id)

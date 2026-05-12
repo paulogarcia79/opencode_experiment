@@ -11,7 +11,9 @@ vi.mock('@/composables/useAdminApi', () => ({
 
 import { fetchUsers, inviteUser, updateUserRole, toggleUserActive } from '@/composables/useAdminApi'
 
-const mockUsers = [
+import type { User } from '@/types'
+
+const mockUsers: User[] = [
   {
     id: 'user-1',
     email: 'admin@example.com',

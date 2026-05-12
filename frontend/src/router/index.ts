@@ -133,8 +133,6 @@ const router = createRouter({
   ],
 })
 
-let meFetched = false
-
 router.beforeEach(async (to, _from, next) => {
   const store = useAdminStore()
   if (to.meta.requiresAuth && !store.token) {
@@ -142,17 +140,12 @@ router.beforeEach(async (to, _from, next) => {
   } else if (to.path === '/admin/login' && store.token) {
     next('/admin')
   } else {
-    if (to.meta.requiresAuth && store.token && store.user === null && !meFetched) {
-      meFetched = true
+    if (to.meta.requiresAuth && store.token && !store.profileLoaded) {
       await store.fetchMe()
       if (!store.token) {
         next('/admin/login')
         return
       }
-    }
-    if (to.meta.requiresAdmin && store.user?.role !== 'admin') {
-      next('/admin')
-      return
     }
     next()
   }

@@ -77,18 +77,3 @@ def require_role(allowed_roles: list[str]):
 
         return user
     return _require_role
-
-
-async def require_admin(
-    token: str = Depends(oauth2_scheme),
-    session: Session = Depends(get_session),
-) -> User:
-    user = _decode_and_validate_user(token, session)
-
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Account is deactivated",
-        )
-
-    return user

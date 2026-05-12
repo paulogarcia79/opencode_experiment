@@ -2,26 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 from app.models.user import User
-from app.services.auth_service import create_access_token, get_password_hash
-
-
-def _create_user(session: Session, email: str, role: str = "contributor", is_active: bool = True, is_verified: bool = True) -> User:
-    user = User(
-        email=email,
-        hashed_password=get_password_hash("test-password"),
-        role=role,
-        is_active=is_active,
-        is_verified=is_verified,
-    )
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    return user
-
-
-def _get_token_headers(session: Session, user: User) -> dict:
-    token = create_access_token(data={"sub": str(user.id), "token_version": user.token_version})
-    return {"Authorization": f"Bearer {token}"}
+from tests.conftest import create_user, create_user_token, get_token_for_user
 
 
 def _get_admin(session: Session) -> User:
@@ -30,18 +11,18 @@ def _get_admin(session: Session) -> User:
 
 class TestListUsers:
     def test_list_users_requires_admin(self, client: TestClient, session: Session):
-        editor = _create_user(session, "editor@example.com", role="editor")
-        headers = _get_token_headers(session, editor)
+        editor = create_user(session, "editor@example.com", role="editor")
+        headers = get_token_for_user(editor)
 
         response = client.get("/api/admin/users", headers=headers)
         assert response.status_code == 403
 
     def test_list_users_returns_all_users(self, client: TestClient, session: Session):
         admin = _get_admin(session)
-        _create_user(session, "user1@example.com", role="editor")
-        _create_user(session, "user2@example.com", role="contributor")
+        create_user(session, "user1@example.com", role="editor")
+        create_user(session, "user2@example.com", role="contributor")
 
-        headers = _get_token_headers(session, admin)
+        headers = get_token_for_user(admin)
         response = client.get("/api/admin/users", headers=headers)
 
         assert response.status_code == 200
@@ -54,7 +35,7 @@ class TestListUsers:
 
     def test_list_users_returns_correct_fields(self, client: TestClient, session: Session):
         admin = _get_admin(session)
-        headers = _get_token_headers(session, admin)
+        headers = get_token_for_user(admin)
 
         response = client.get("/api/admin/users", headers=headers)
         assert response.status_code == 200
@@ -70,8 +51,8 @@ class TestListUsers:
 
 class TestInviteUser:
     def test_invite_user_requires_admin(self, client: TestClient, session: Session):
-        editor = _create_user(session, "editor@example.com", role="editor")
-        headers = _get_token_headers(session, editor)
+        editor = create_user(session, "editor@example.com", role="editor")
+        headers = get_token_for_user(editor)
 
         response = client.post("/api/admin/users/invite", headers=headers, json={"email": "new@example.com", "role": "contributor"})
         assert response.status_code == 403
@@ -82,7 +63,7 @@ class TestInviteUser:
 
         _invite_cooldown.clear()
         admin = _get_admin(session)
-        headers = _get_token_headers(session, admin)
+        headers = get_token_for_user(admin)
 
         with patch("app.routers.users.send_invite_email") as mock_send:
             response = client.post(
@@ -110,8 +91,8 @@ class TestInviteUser:
         _invite_cooldown.clear()
 
         admin = _get_admin(session)
-        headers = _get_token_headers(session, admin)
-        _create_user(session, "existing@example.com")
+        headers = get_token_for_user(admin)
+        create_user(session, "existing@example.com")
 
         response = client.post(
             "/api/admin/users/invite",
@@ -126,7 +107,7 @@ class TestInviteUser:
 
         _invite_cooldown.clear()
         admin = _get_admin(session)
-        headers = _get_token_headers(session, admin)
+        headers = get_token_for_user(admin)
 
         with patch("app.routers.users.send_invite_email"):
             response1 = client.post(
@@ -146,17 +127,17 @@ class TestInviteUser:
 
 class TestUpdateUserRole:
     def test_update_role_requires_admin(self, client: TestClient, session: Session):
-        editor = _create_user(session, "editor@example.com", role="editor")
-        contributor = _create_user(session, "contributor@example.com", role="contributor")
-        headers = _get_token_headers(session, editor)
+        editor = create_user(session, "editor@example.com", role="editor")
+        contributor = create_user(session, "contributor@example.com", role="contributor")
+        headers = get_token_for_user(editor)
 
         response = client.put(f"/api/admin/users/{contributor.id}/role", headers=headers, json={"role": "editor"})
         assert response.status_code == 403
 
     def test_update_role_success(self, client: TestClient, session: Session):
         admin = _get_admin(session)
-        user = _create_user(session, "user@example.com", role="contributor")
-        headers = _get_token_headers(session, admin)
+        user = create_user(session, "user@example.com", role="contributor")
+        headers = get_token_for_user(admin)
 
         response = client.put(f"/api/admin/users/{user.id}/role", headers=headers, json={"role": "editor"})
         assert response.status_code == 200
@@ -166,15 +147,15 @@ class TestUpdateUserRole:
 
     def test_update_role_invalid_role_returns_400(self, client: TestClient, session: Session):
         admin = _get_admin(session)
-        user = _create_user(session, "user@example.com", role="contributor")
-        headers = _get_token_headers(session, admin)
+        user = create_user(session, "user@example.com", role="contributor")
+        headers = get_token_for_user(admin)
 
         response = client.put(f"/api/admin/users/{user.id}/role", headers=headers, json={"role": "superadmin"})
         assert response.status_code == 400
 
     def test_update_role_user_not_found_returns_404(self, client: TestClient, session: Session):
         admin = _get_admin(session)
-        headers = _get_token_headers(session, admin)
+        headers = get_token_for_user(admin)
 
         response = client.put("/api/admin/users/00000000-0000-0000-0000-000000000000/role", headers=headers, json={"role": "editor"})
         assert response.status_code == 404
@@ -182,16 +163,16 @@ class TestUpdateUserRole:
 
 class TestToggleUserActive:
     def test_toggle_active_requires_admin(self, client: TestClient, session: Session):
-        editor = _create_user(session, "editor@example.com", role="editor")
-        headers = _get_token_headers(session, editor)
+        editor = create_user(session, "editor@example.com", role="editor")
+        headers = get_token_for_user(editor)
 
         response = client.put(f"/api/admin/users/{editor.id}/active", headers=headers, json={"is_active": False})
         assert response.status_code == 403
 
     def test_deactivate_user(self, client: TestClient, session: Session):
         admin = _get_admin(session)
-        user = _create_user(session, "user@example.com", role="contributor")
-        headers = _get_token_headers(session, admin)
+        user = create_user(session, "user@example.com", role="contributor")
+        headers = get_token_for_user(admin)
 
         response = client.put(f"/api/admin/users/{user.id}/active", headers=headers, json={"is_active": False})
         assert response.status_code == 200
@@ -201,8 +182,8 @@ class TestToggleUserActive:
 
     def test_reactivate_user(self, client: TestClient, session: Session):
         admin = _get_admin(session)
-        user = _create_user(session, "user@example.com", role="contributor", is_active=False)
-        headers = _get_token_headers(session, admin)
+        user = create_user(session, "user@example.com", role="contributor", is_active=False)
+        headers = get_token_for_user(admin)
 
         response = client.put(f"/api/admin/users/{user.id}/active", headers=headers, json={"is_active": True})
         assert response.status_code == 200
@@ -212,7 +193,7 @@ class TestToggleUserActive:
 
     def test_toggle_active_user_not_found_returns_404(self, client: TestClient, session: Session):
         admin = _get_admin(session)
-        headers = _get_token_headers(session, admin)
+        headers = get_token_for_user(admin)
 
         response = client.put("/api/admin/users/00000000-0000-0000-0000-000000000000/active", headers=headers, json={"is_active": False})
         assert response.status_code == 404
@@ -223,7 +204,7 @@ class TestSetupEndpoint:
         from app.services.auth_service import pwd_context
         import secrets
 
-        user = _create_user(session, "newuser@example.com", role="contributor", is_verified=False)
+        user = create_user(session, "newuser@example.com", role="contributor", is_verified=False)
         plaintext = secrets.token_urlsafe(32)
         hashed = pwd_context.hash(plaintext)
         user.setup_token_hash = hashed
@@ -256,7 +237,7 @@ class TestSetupEndpoint:
         import secrets
         from datetime import datetime, timedelta, timezone
 
-        user = _create_user(session, "expired@example.com", role="contributor", is_verified=False)
+        user = create_user(session, "expired@example.com", role="contributor", is_verified=False)
         plaintext = secrets.token_urlsafe(32)
         hashed = pwd_context.hash(plaintext)
         user.setup_token_hash = hashed
@@ -275,7 +256,7 @@ class TestSetupEndpoint:
         import secrets
         from datetime import datetime, timedelta, timezone
 
-        user = _create_user(session, "reuse@example.com", role="contributor", is_verified=False)
+        user = create_user(session, "reuse@example.com", role="contributor", is_verified=False)
         plaintext = secrets.token_urlsafe(32)
         hashed = pwd_context.hash(plaintext)
         user.setup_token_hash = hashed
@@ -300,7 +281,7 @@ class TestInactiveUserCannotLogin:
     def test_inactive_user_cannot_login(self, client: TestClient, session: Session):
         from app.services.auth_service import get_password_hash
 
-        user = _create_user(session, "inactive@example.com", role="contributor", is_active=False)
+        user = create_user(session, "inactive@example.com", role="contributor", is_active=False)
         user.hashed_password = get_password_hash("correct-password")
         session.add(user)
         session.commit()

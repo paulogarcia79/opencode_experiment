@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAdminStore } from '@/stores/admin'
+import type { User } from '@/types'
 
-const mockUser = {
+const mockUser: User = {
   id: 'test-user-id',
   email: 'test@example.com',
   role: 'editor',

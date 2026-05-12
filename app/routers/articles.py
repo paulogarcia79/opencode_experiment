@@ -251,18 +251,20 @@ async def update_article_endpoint(
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
     
-    # Check contributor permissions
-    if user.role == "contributor":
-        if not check_article_permission(user, article, "edit_own"):
+    # Check edit permission
+    if not check_article_permission(user, article, "edit_own"):
+        if not check_article_permission(user, article, "edit_others"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to perform this action",
             )
-        if data.status == "published":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to perform this action",
-            )
+    
+    # Check publish permission
+    if data.status == "published" and not check_article_permission(user, article, "publish"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action",
+        )
     
     should_send_newsletter = False
     change_type = "save"
@@ -317,7 +319,7 @@ def delete_article_endpoint(
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
     
-    if user.role == "contributor":
+    if not check_article_permission(user, article, "delete"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to perform this action",
@@ -329,6 +331,7 @@ def delete_article_endpoint(
 @router.post("/api/admin/articles/import", response_model=ImportResult, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 async def import_markdown_endpoint(
     files: list[UploadFile] = File(...),
+    user=Depends(require_role(["admin", "editor", "contributor"])),
     session: Session = Depends(get_session),
 ):
     from app.services.markdown_import_service import import_markdown_files
@@ -336,7 +339,7 @@ async def import_markdown_endpoint(
     for f in files:
         content = await f.read()
         file_contents.append((f.filename, content))
-    return import_markdown_files(session, file_contents)
+    return import_markdown_files(session, file_contents, author_id=user.id)
 
 @router.post("/api/admin/articles/autosave", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def autosave_create_article_endpoint(
@@ -369,11 +372,12 @@ def autosave_article_endpoint(
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
 
-    if user.role == "contributor" and not check_article_permission(user, article, "edit_own"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to perform this action",
-        )
+    if not check_article_permission(user, article, "edit_own"):
+        if not check_article_permission(user, article, "edit_others"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action",
+            )
 
     update_data = {}
     if data.title is not None:
@@ -481,11 +485,16 @@ def get_article_revision_endpoint(article_id: UUID, version_number: int, session
     return rev_data
 
 @router.post("/api/admin/articles/{article_id}/revisions/{version_number}/restore", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
-def restore_article_revision_endpoint(article_id: UUID, version_number: int, session: Session = Depends(get_session)):
+def restore_article_revision_endpoint(
+    article_id: UUID,
+    version_number: int,
+    user=Depends(require_role(["admin", "editor", "contributor"])),
+    session: Session = Depends(get_session),
+):
     article = session.get(Article, article_id)
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
-    restored = restore_revision(session, article, version_number)
+    restored = restore_revision(session, article, version_number, author_id=user.id)
     if not restored:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
     response = restored.model_dump()
@@ -509,7 +518,7 @@ def reassign_article_endpoint(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid author_id format")
 
     try:
-        updated = reassign_article(session, article, new_author_id)
+        updated = reassign_article(session, article, new_author_id, actor_id=user.id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
