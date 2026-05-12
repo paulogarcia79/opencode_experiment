@@ -8,6 +8,15 @@ export interface Tag {
   created_at?: string
 }
 
+export interface User {
+  id: string
+  email: string
+  role: string
+  is_active: boolean
+  is_verified: boolean
+  created_at: string
+}
+
 export interface ArticleAuthor {
   id: string
   email: string

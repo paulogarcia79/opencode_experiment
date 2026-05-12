@@ -139,6 +139,7 @@ onMounted(async () => {
     try {
       const data = await exchangeOAuthCode(oauthCode)
       store.setToken(data.token)
+      await store.fetchMe()
       router.replace('/admin')
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : 'OAuth login failed'
@@ -155,9 +156,10 @@ async function handleLogin() {
   try {
     const data = await login(email.value, password.value)
     store.setToken(data.token)
+    await store.fetchMe()
     router.push('/admin')
-  } catch (e: any) {
-    error.value = e.message || 'Something went wrong'
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Something went wrong'
   } finally {
     loading.value = false
   }

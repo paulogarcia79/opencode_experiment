@@ -8,6 +8,7 @@ from app.models.user import User
 from app.schemas import LoginRequest, ForgotPasswordRequest, ResetPasswordRequest
 from app.services.auth_service import verify_password, create_access_token, generate_reset_token, validate_reset_token, reset_password, pwd_context
 from app.services.email_service import send_password_reset_email, send_verification_email
+from app.dependencies import require_role
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -32,6 +33,17 @@ def login(request: LoginRequest, session: Session = Depends(get_session)):
     
     access_token = create_access_token(data={"sub": str(user.id), "token_version": user.token_version})
     return {"token": access_token, "type": "bearer"}
+
+@router.get("/me")
+def get_me(user: User = Depends(require_role(["admin", "editor", "contributor"]))):
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "role": user.role,
+        "is_active": user.is_active,
+        "is_verified": user.is_verified,
+        "created_at": user.created_at,
+    }
 
 @router.post("/forgot-password")
 def forgot_password(request: ForgotPasswordRequest, session: Session = Depends(get_session)):

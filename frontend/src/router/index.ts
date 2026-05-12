@@ -126,13 +126,23 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, _from, next) => {
+let meFetched = false
+
+router.beforeEach(async (to, _from, next) => {
   const store = useAdminStore()
   if (to.meta.requiresAuth && !store.token) {
     next('/admin/login')
   } else if (to.path === '/admin/login' && store.token) {
     next('/admin')
   } else {
+    if (to.meta.requiresAuth && store.token && store.user === null && !meFetched) {
+      meFetched = true
+      await store.fetchMe()
+      if (!store.token) {
+        next('/admin/login')
+        return
+      }
+    }
     next()
   }
 })
