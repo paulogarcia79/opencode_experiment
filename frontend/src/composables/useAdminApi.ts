@@ -231,6 +231,7 @@ export interface RevisionListItem {
   change_type: string
   title: string
   created_at: string
+  author_email: string | null
 }
 
 export interface Revision {
@@ -241,6 +242,7 @@ export interface Revision {
   description: string | null
   tag_names: string[]
   created_at: string
+  author_email: string | null
 }
 
 export async function fetchRevisions(articleId: string): Promise<RevisionListItem[]> {

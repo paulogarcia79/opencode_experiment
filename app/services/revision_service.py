@@ -24,6 +24,7 @@ def create_revision(
     session: Session,
     article: Article,
     change_type: str,
+    author_id: Optional[uuid.UUID] = None,
 ) -> ArticleRevision:
     """Create a revision snapshot of the current article state."""
     version_number = _next_version_number(session, article.id)
@@ -37,6 +38,7 @@ def create_revision(
         description=article.description,
         tag_names=tag_names,
         change_type=change_type,
+        author_id=author_id,
         created_at=datetime.now(timezone.utc),
     )
     session.add(revision)
@@ -51,6 +53,7 @@ def list_revisions(session: Session, article_id: uuid.UUID) -> List[ArticleRevis
         select(ArticleRevision)
         .where(ArticleRevision.article_id == article_id)
         .order_by(ArticleRevision.version_number.desc())
+        .options(selectinload(ArticleRevision.author))
     ).all()
 
 
@@ -64,6 +67,7 @@ def get_revision(
         select(ArticleRevision)
         .where(ArticleRevision.article_id == article_id)
         .where(ArticleRevision.version_number == version_number)
+        .options(selectinload(ArticleRevision.author))
     ).first()
 
 

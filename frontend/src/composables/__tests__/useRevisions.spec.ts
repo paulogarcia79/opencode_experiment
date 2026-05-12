@@ -14,8 +14,8 @@ describe('useRevisions', () => {
   describe('fetchList', () => {
     it('fetches revision list and populates revisions ref', async () => {
       const mockRevisions = [
-        { version_number: 2, change_type: 'save', title: 'V2', created_at: '2025-01-15T10:00:00' },
-        { version_number: 1, change_type: 'save', title: 'V1', created_at: '2025-01-15T09:00:00' },
+        { version_number: 2, change_type: 'save', title: 'V2', created_at: '2025-01-15T10:00:00', author_email: 'admin@example.com' },
+        { version_number: 1, change_type: 'save', title: 'V1', created_at: '2025-01-15T09:00:00', author_email: 'admin@example.com' },
       ]
       vi.spyOn(useAdminApi, 'fetchRevisions').mockResolvedValue(mockRevisions)
 
@@ -46,6 +46,7 @@ describe('useRevisions', () => {
         description: 'Desc',
         tag_names: ['tech'],
         created_at: '2025-01-15T09:00:00',
+        author_email: 'admin@example.com',
       }
       vi.spyOn(useAdminApi, 'fetchRevision').mockResolvedValue(mockRevision)
 
@@ -70,7 +71,7 @@ describe('useRevisions', () => {
     it('calls restore API and refreshes revision list', async () => {
       const mockArticle = { id: 'article-1', title: 'Restored' }
       const mockRevisions = [
-        { version_number: 2, change_type: 'restore', title: 'Restored', created_at: '2025-01-15T11:00:00' },
+        { version_number: 2, change_type: 'restore', title: 'Restored', created_at: '2025-01-15T11:00:00', author_email: 'admin@example.com' },
       ]
       vi.spyOn(useAdminApi, 'restoreRevision').mockResolvedValue(mockArticle)
       vi.spyOn(useAdminApi, 'fetchRevisions').mockResolvedValue(mockRevisions)

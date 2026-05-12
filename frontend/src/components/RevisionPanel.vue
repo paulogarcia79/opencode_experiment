@@ -53,7 +53,10 @@
                     </span>
                     <span class="text-sm text-white truncate flex-1">{{ rev.title }}</span>
                   </div>
-                  <div class="text-xs text-slate-500 mt-1">{{ formatDate(rev.created_at) }}</div>
+                  <div class="flex items-center justify-between text-xs text-slate-500 mt-1">
+                    <span>{{ formatDate(rev.created_at) }}</span>
+                    <span v-if="rev.author_email" class="text-slate-600">{{ rev.author_email }}</span>
+                  </div>
                 </button>
               </li>
             </ul>

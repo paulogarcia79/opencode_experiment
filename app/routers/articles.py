@@ -175,6 +175,7 @@ Sitemap: {base_url}/sitemap.xml
 @router.post("/api/admin/articles", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def create_article_endpoint(
     data: ArticleCreate,
+    user=Depends(require_role(["admin", "editor", "contributor"])),
     session: Session = Depends(get_session),
 ):
     article = create_article(
@@ -184,24 +185,40 @@ def create_article_endpoint(
         data.description,
         data.send_newsletter,
         data.tag_names,
-        data.scheduled_for
+        data.scheduled_for,
+        author_id=user.id,
     )
     response = article.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
+    if article.author:
+        response["author"] = {"id": str(article.author.id), "email": article.author.email}
+    else:
+        response["author"] = None
     return response
 
-@router.get("/api/admin/articles", response_model=list[Article], dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
+@router.get("/api/admin/articles", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def list_admin_articles_endpoint(skip: int = 0, limit: int = 50, session: Session = Depends(get_session)):
     from sqlmodel import select
     from sqlalchemy.orm import selectinload
     limit = min(limit, 200)
-    return session.exec(
+    articles = session.exec(
         select(Article)
         .order_by(Article.created_at.desc())
         .offset(skip)
         .limit(limit)
-        .options(selectinload(Article.tags))
+        .options(selectinload(Article.tags), selectinload(Article.author))
     ).all()
+    
+    result = []
+    for article in articles:
+        article_data = article.model_dump()
+        article_data["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
+        if article.author:
+            article_data["author"] = {"id": str(article.author.id), "email": article.author.email}
+        else:
+            article_data["author"] = None
+        result.append(article_data)
+    return result
 
 @router.get("/api/admin/articles/performance", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def get_articles_performance_list(session: Session = Depends(get_session)):
@@ -223,6 +240,7 @@ def get_admin_article_endpoint(article_id: UUID, session: Session = Depends(get_
 async def update_article_endpoint(
     article_id: UUID,
     data: ArticleUpdate,
+    user=Depends(require_role(["admin", "editor", "contributor"])),
     session: Session = Depends(get_session),
     arq_pool: ArqRedis = Depends(get_arq_pool),
 ):
@@ -244,7 +262,7 @@ async def update_article_endpoint(
             detail="Cannot unpublish an article",
         )
     
-    create_revision(session, article, change_type)
+    create_revision(session, article, change_type, author_id=user.id)
     
     update_data = {}
     if data.title is not None:
@@ -296,6 +314,7 @@ async def import_markdown_endpoint(
 @router.post("/api/admin/articles/autosave", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def autosave_create_article_endpoint(
     data: ArticleAutoSave,
+    user=Depends(require_role(["admin", "editor", "contributor"])),
     session: Session = Depends(get_session),
 ):
     article = create_article(
@@ -306,6 +325,7 @@ def autosave_create_article_endpoint(
         send_newsletter=False,
         tag_names=data.tag_names,
         scheduled_for=None,
+        author_id=user.id,
     )
     response_data = article.model_dump()
     response_data["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
@@ -406,7 +426,13 @@ def list_article_revisions_endpoint(article_id: UUID, session: Session = Depends
     article = session.get(Article, article_id)
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
-    return list_revisions(session, article_id)
+    revisions = list_revisions(session, article_id)
+    result = []
+    for rev in revisions:
+        rev_data = RevisionListRead.model_validate(rev).model_dump()
+        rev_data["author_email"] = rev.author.email if rev.author else None
+        result.append(rev_data)
+    return result
 
 @router.get("/api/admin/articles/{article_id}/revisions/{version_number}", response_model=RevisionRead, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def get_article_revision_endpoint(article_id: UUID, version_number: int, session: Session = Depends(get_session)):
@@ -416,7 +442,9 @@ def get_article_revision_endpoint(article_id: UUID, version_number: int, session
     revision = get_revision(session, article_id, version_number)
     if not revision:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
-    return revision
+    rev_data = RevisionRead.model_validate(revision).model_dump()
+    rev_data["author_email"] = revision.author.email if revision.author else None
+    return rev_data
 
 @router.post("/api/admin/articles/{article_id}/revisions/{version_number}/restore", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def restore_article_revision_endpoint(article_id: UUID, version_number: int, session: Session = Depends(get_session)):

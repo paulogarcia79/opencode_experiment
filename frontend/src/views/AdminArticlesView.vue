@@ -45,6 +45,7 @@
         <thead class="border-b border-white/5">
           <tr>
             <th class="px-5 py-4 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Title</th>
+            <th class="px-5 py-4 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Author</th>
             <th class="px-5 py-4 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Slug</th>
             <th class="px-5 py-4 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Status</th>
             <th class="px-5 py-4 text-left font-medium text-slate-500 text-xs uppercase tracking-wider">Views</th>
@@ -61,6 +62,9 @@
           >
             <td class="px-5 py-4">
               <span class="font-medium text-white">{{ article.title }}</span>
+            </td>
+            <td class="px-5 py-4 font-mono text-xs text-slate-400">
+              {{ article.author?.email ?? '—' }}
             </td>
             <td class="px-5 py-4 font-mono text-xs text-slate-600">{{ article.slug }}</td>
             <td class="px-5 py-4">

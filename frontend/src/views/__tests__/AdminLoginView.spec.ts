@@ -50,7 +50,7 @@ describe('AdminLoginView', () => {
   })
 
   it('shows loading state during submission', async () => {
-    vi.mocked(login).mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve({ token: 'test' }), 50)))
+    vi.mocked(login).mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve({ token: 'test', type: 'bearer' }), 50)))
 
     const wrapper = mount(AdminLoginView, { global: { components: { RouterLink } } })
     
@@ -63,7 +63,7 @@ describe('AdminLoginView', () => {
   })
 
   it('stores token and redirects on successful login', async () => {
-    vi.mocked(login).mockResolvedValue({ token: 'new-jwt-token' })
+    vi.mocked(login).mockResolvedValue({ token: 'new-jwt-token', type: 'bearer' })
     const store = useAdminStore()
 
     const wrapper = mount(AdminLoginView, { global: { components: { RouterLink } } })

@@ -1,5 +1,6 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import JSON, Column, Text, Index
 
@@ -14,7 +15,10 @@ class ArticleRevision(SQLModel, table=True):
     description: str | None = Field(default=None, sa_column=Column(Text))
     tag_names: list = Field(default_factory=list, sa_column=Column(JSON))
     change_type: str = Field(nullable=False)  # "save", "publish", "restore"
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    author_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id", nullable=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+
+    author: Optional["User"] = Relationship()
 
     __table_args__ = (
         Index("ix_article_revisions_article_version", "article_id", "version_number"),

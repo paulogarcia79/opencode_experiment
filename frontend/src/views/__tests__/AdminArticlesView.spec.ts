@@ -55,6 +55,15 @@ describe('AdminArticlesView', () => {
         slug: 'published-article',
         status: 'published',
         published_at: '2025-01-15T00:00:00Z',
+        content: { type: 'doc' },
+        description: null,
+        send_newsletter: true,
+        scheduled_for: null,
+        search_text: null,
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T00:00:00Z',
+        author: { id: 'user-1', email: 'admin@example.com' },
+        tags: [],
       },
       {
         id: '2',
@@ -62,6 +71,15 @@ describe('AdminArticlesView', () => {
         slug: 'draft-article',
         status: 'draft',
         published_at: null,
+        content: { type: 'doc' },
+        description: null,
+        send_newsletter: true,
+        scheduled_for: null,
+        search_text: null,
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T00:00:00Z',
+        author: { id: 'user-1', email: 'admin@example.com' },
+        tags: [],
       },
     ]
     vi.mocked(fetchAdminArticles).mockResolvedValue(mockArticles)
@@ -78,7 +96,22 @@ describe('AdminArticlesView', () => {
 
   it('calls deleteArticle when confirming deletion', async () => {
     const mockArticles = [
-      { id: '1', title: 'Test', slug: 'test', status: 'draft', published_at: null },
+      {
+        id: '1',
+        title: 'Test',
+        slug: 'test',
+        status: 'draft',
+        published_at: null,
+        content: { type: 'doc' },
+        description: null,
+        send_newsletter: true,
+        scheduled_for: null,
+        search_text: null,
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T00:00:00Z',
+        author: { id: 'user-1', email: 'admin@example.com' },
+        tags: [],
+      },
     ]
     vi.mocked(fetchAdminArticles).mockResolvedValue(mockArticles)
     vi.mocked(deleteArticle).mockResolvedValue(undefined)

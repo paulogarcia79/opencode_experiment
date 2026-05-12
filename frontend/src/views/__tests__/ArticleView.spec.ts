@@ -173,7 +173,7 @@ describe('ArticleView', () => {
       published_at: '2025-01-15T00:00:00Z',
     })
 
-    const wrapper = mount(ArticleView, { global: { components: { RouterLink } } })
+    mount(ArticleView, { global: { components: { RouterLink } } })
     await flushPromises()
 
     expect(useHead).toHaveBeenCalledWith(

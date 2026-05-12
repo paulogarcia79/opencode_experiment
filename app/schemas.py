@@ -86,6 +86,7 @@ class RevisionListRead(BaseModel):
     change_type: str
     title: str
     created_at: datetime
+    author_email: Optional[str] = None
 
 class RevisionRead(BaseModel):
     model_config = {"from_attributes": True}
@@ -97,6 +98,7 @@ class RevisionRead(BaseModel):
     description: Optional[str] = None
     tag_names: List[str]
     created_at: datetime
+    author_email: Optional[str] = None
 
 class ImportSuccessItem(BaseModel):
     id: str

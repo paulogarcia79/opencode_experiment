@@ -32,6 +32,7 @@ def create_article(
     send_newsletter: bool = True,
     tag_names: Optional[List[str]] = None,
     scheduled_for: Optional[datetime] = None,
+    author_id: Optional[uuid.UUID] = None,
 ) -> Article:
     slug = generate_slug(title, session)
     if description is None:
@@ -47,6 +48,7 @@ def create_article(
         status="draft",
         send_newsletter=send_newsletter,
         scheduled_for=scheduled_for,
+        author_id=author_id,
         search_text=build_search_text(title, description, content, [t.name for t in tags]),
     )
     article.tags = tags
@@ -55,7 +57,7 @@ def create_article(
     session.refresh(article)
     # Eager-load tags for serialization
     return session.exec(
-        select(Article).where(Article.id == article.id).options(selectinload(Article.tags))
+        select(Article).where(Article.id == article.id).options(selectinload(Article.tags), selectinload(Article.author))
     ).first()
 
 def get_article_by_slug(session: Session, slug: str) -> Optional[Article]:

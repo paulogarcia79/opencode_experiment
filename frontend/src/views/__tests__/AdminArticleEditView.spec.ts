@@ -65,11 +65,18 @@ describe('AdminArticleEditView', () => {
     vi.mocked(fetchAdminArticle).mockResolvedValue({
       id: '123',
       title: 'Existing Article',
+      slug: 'existing-article',
       description: 'A description',
       content: { type: 'doc', content: [] },
       status: 'draft',
       send_newsletter: false,
-      tags: [{ name: 'Vue', slug: 'vue' }],
+      published_at: null,
+      scheduled_for: null,
+      search_text: null,
+      created_at: '2025-01-15T00:00:00Z',
+      updated_at: '2025-01-15T00:00:00Z',
+      author: { id: 'user-1', email: 'admin@example.com' },
+      tags: [{ id: '1', name: 'Vue', slug: 'vue' }],
     })
 
     const wrapper = mount(AdminArticleEditView, {
@@ -82,7 +89,22 @@ describe('AdminArticleEditView', () => {
   })
 
   it('calls createArticle and redirects on new article submit', async () => {
-    vi.mocked(createArticle).mockResolvedValue({ id: 'new-id', title: 'Test' })
+    vi.mocked(createArticle).mockResolvedValue({
+      id: 'new-id',
+      title: 'Test',
+      slug: 'test',
+      content: { type: 'doc' },
+      description: null,
+      status: 'draft',
+      send_newsletter: true,
+      published_at: null,
+      scheduled_for: null,
+      search_text: null,
+      created_at: '2025-01-15T00:00:00Z',
+      updated_at: '2025-01-15T00:00:00Z',
+      author: { id: 'user-1', email: 'admin@example.com' },
+      tags: [],
+    })
 
     const wrapper = mount(AdminArticleEditView, {
       global: { components: { RouterLink, TipTapEditor, TagInput } },
@@ -104,13 +126,35 @@ describe('AdminArticleEditView', () => {
     vi.mocked(fetchAdminArticle).mockResolvedValue({
       id: '123',
       title: 'Existing',
+      slug: 'existing',
       description: '',
       content: { type: 'doc', content: [] },
       status: 'draft',
       send_newsletter: true,
+      published_at: null,
+      scheduled_for: null,
+      search_text: null,
+      created_at: '2025-01-15T00:00:00Z',
+      updated_at: '2025-01-15T00:00:00Z',
+      author: { id: 'user-1', email: 'admin@example.com' },
       tags: [],
     })
-    vi.mocked(updateArticle).mockResolvedValue({ id: '123' })
+    vi.mocked(updateArticle).mockResolvedValue({
+      id: '123',
+      title: 'Existing',
+      slug: 'existing',
+      content: { type: 'doc', content: [] },
+      description: '',
+      status: 'draft',
+      send_newsletter: true,
+      published_at: null,
+      scheduled_for: null,
+      search_text: null,
+      created_at: '2025-01-15T00:00:00Z',
+      updated_at: '2025-01-15T00:00:00Z',
+      author: { id: 'user-1', email: 'admin@example.com' },
+      tags: [],
+    })
 
     const wrapper = mount(AdminArticleEditView, {
       global: { components: { RouterLink, TipTapEditor, TagInput } },
@@ -127,6 +171,8 @@ describe('AdminArticleEditView', () => {
   it('shows auto-save status indicators', async () => {
     vi.mocked(useAutoSave).mockReturnValue({
       status: ref('saved'),
+      error: ref<string | null>(null),
+      lastSavedAt: ref<Date | null>(null),
       retry: vi.fn(),
     })
 
@@ -159,10 +205,17 @@ describe('AdminArticleEditView', () => {
     vi.mocked(fetchAdminArticle).mockResolvedValue({
       id: '123',
       title: 'Existing',
+      slug: 'existing',
       description: '',
       content: { type: 'doc', content: [] },
       status: 'draft',
       send_newsletter: true,
+      published_at: null,
+      scheduled_for: null,
+      search_text: null,
+      created_at: '2025-01-15T00:00:00Z',
+      updated_at: '2025-01-15T00:00:00Z',
+      author: { id: 'user-1', email: 'admin@example.com' },
       tags: [],
     })
     vi.mocked(sendPreviewEmail).mockResolvedValue({ message: 'Preview sent successfully' })
@@ -189,10 +242,17 @@ describe('AdminArticleEditView', () => {
     vi.mocked(fetchAdminArticle).mockResolvedValue({
       id: '123',
       title: 'Existing',
+      slug: 'existing',
       description: '',
       content: { type: 'doc', content: [] },
       status: 'draft',
       send_newsletter: true,
+      published_at: null,
+      scheduled_for: null,
+      search_text: null,
+      created_at: '2025-01-15T00:00:00Z',
+      updated_at: '2025-01-15T00:00:00Z',
+      author: { id: 'user-1', email: 'admin@example.com' },
       tags: [],
     })
     vi.mocked(sendPreviewEmail).mockRejectedValue(new Error('Network error'))
