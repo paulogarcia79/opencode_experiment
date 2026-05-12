@@ -17,6 +17,7 @@ from app.services.article_service import (
     update_article,
     delete_article,
 )
+from app.services.permission_service import check_article_permission
 from app.services.revision_service import (
     list_revisions,
     get_revision,
@@ -248,6 +249,19 @@ async def update_article_endpoint(
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
     
+    # Check contributor permissions
+    if user.role == "contributor":
+        if not check_article_permission(user, article, "edit_own"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action",
+            )
+        if data.status == "published":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action",
+            )
+    
     should_send_newsletter = False
     change_type = "save"
     
@@ -292,10 +306,21 @@ async def update_article_endpoint(
     return response_data
 
 @router.delete("/api/articles/{article_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
-def delete_article_endpoint(article_id: UUID, session: Session = Depends(get_session)):
+def delete_article_endpoint(
+    article_id: UUID,
+    user=Depends(require_role(["admin", "editor", "contributor"])),
+    session: Session = Depends(get_session),
+):
     article = session.get(Article, article_id)
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+    
+    if user.role == "contributor":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action",
+        )
+    
     delete_article(session, article)
     return None
 
@@ -335,11 +360,18 @@ def autosave_create_article_endpoint(
 def autosave_article_endpoint(
     article_id: UUID,
     data: ArticleAutoSave,
+    user=Depends(require_role(["admin", "editor", "contributor"])),
     session: Session = Depends(get_session),
 ):
     article = session.get(Article, article_id)
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+
+    if user.role == "contributor" and not check_article_permission(user, article, "edit_own"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action",
+        )
 
     update_data = {}
     if data.title is not None:
