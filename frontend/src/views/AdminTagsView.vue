@@ -99,6 +99,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { getAuthHeaders } from '@/composables/useAdminApi'
 
 interface Tag {
   id: string
@@ -107,6 +108,8 @@ interface Tag {
   article_count: number
   created_at: string
 }
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 const tags = ref<Tag[]>([])
 const loading = ref(true)
@@ -127,15 +130,13 @@ async function fetchTags() {
   loading.value = true
   error.value = ''
   try {
-    const res = await fetch('/api/admin/tags', {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}`,
-      },
+    const res = await fetch(`${API_BASE}/api/admin/tags`, {
+      headers: getAuthHeaders(),
     })
     if (!res.ok) throw new Error('Failed to load tags')
     tags.value = await res.json()
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Failed to load tags'
   } finally {
     loading.value = false
   }
@@ -149,21 +150,20 @@ function confirmDelete(tag: Tag) {
 async function executeDelete() {
   if (!tagToDelete.value) return
   try {
-    const res = await fetch(`/api/admin/tags/${tagToDelete.value.id}`, {
+    const res = await fetch(`${API_BASE}/api/admin/tags/${tagToDelete.value.id}`, {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}`,
-      },
+      headers: getAuthHeaders(),
     })
     if (!res.ok) {
       const data = await res.json().catch(() => ({ detail: 'Delete failed' }))
-      throw new Error(typeof data.detail === 'string' ? data.detail : data.detail?.detail || 'Delete failed')
+      const detail = data.detail
+      throw new Error(typeof detail === 'string' ? detail : detail?.detail || 'Delete failed')
     }
     showDeleteDialog.value = false
     tagToDelete.value = null
     await fetchTags()
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Delete failed'
     showDeleteDialog.value = false
   }
 }

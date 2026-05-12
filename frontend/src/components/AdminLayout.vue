@@ -39,6 +39,13 @@
               Media
             </RouterLink>
             <RouterLink
+              to="/admin/tags"
+              exact-active-class="text-primary-400"
+              class="text-sm text-slate-500 hover:text-white transition-colors duration-200 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-white/5"
+            >
+              Tags
+            </RouterLink>
+            <RouterLink
               to="/admin/analytics"
               exact-active-class="text-primary-400"
               class="text-sm text-slate-500 hover:text-white transition-colors duration-200 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-white/5"

@@ -112,7 +112,7 @@
                 {{ article.title }}
               </h2>
               <div class="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                <time :datetime="article.published_at" class="font-mono text-xs">{{ formatDate(article.published_at) }}</time>
+                <time :datetime="article.published_at ?? undefined" class="font-mono text-xs">{{ formatDate(article.published_at ?? '') }}</time>
                 <span class="w-1 h-1 rounded-full bg-slate-600" />
                 <span class="font-mono text-xs">{{ formatReadingTime(estimateReadingTime(article.content)) }}</span>
                 <span class="w-1 h-1 rounded-full bg-slate-600" />
@@ -168,9 +168,10 @@ import { useRouter } from 'vue-router'
 import { fetchArticles } from '@/composables/useApi'
 import { useHead } from '@/composables/useHead'
 import { estimateReadingTime, formatReadingTime } from '@/composables/useReadingTime'
+import type { Article } from '@/types'
 
 const router = useRouter()
-const articles = ref<any[]>([])
+const articles = ref<Article[]>([])
 const loading = ref(true)
 const error = ref('')
 const searchQuery = ref('')
@@ -208,8 +209,8 @@ onMounted(async () => {
   })
   try {
     articles.value = await fetchArticles()
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Failed to fetch articles'
   } finally {
     loading.value = false
   }

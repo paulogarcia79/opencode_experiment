@@ -39,10 +39,17 @@ async def upload_image_endpoint(
     """Upload an image file."""
     validate_image_file(file)
     
+    # Check file size before reading entire content
+    if file.size is not None and file.size > MAX_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File too large. Max size: {settings.MAX_UPLOAD_SIZE_MB}MB"
+        )
+    
     # Read file content
     content = await file.read()
     
-    # Check file size
+    # Double-check file size after reading
     if len(content) > MAX_SIZE_BYTES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useTagSearch } from '@/composables/useTagSearch'
 
+vi.mock('@/stores/admin', () => ({
+  useAdminStore: () => ({ token: 'test-token' }),
+}))
+
 describe('useTagSearch', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -39,7 +43,7 @@ describe('useTagSearch', () => {
       () => new Promise((resolve) => setTimeout(() => resolve(new Response('[]', { status: 200 })), 10))
     )
 
-    const { suggestions, loading, fetchSuggestions } = useTagSearch()
+    const { loading, fetchSuggestions } = useTagSearch()
 
     const promise = fetchSuggestions('test')
     expect(loading.value).toBe(true)

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import Column, String
@@ -14,8 +14,8 @@ class Tag(SQLModel, table=True):
     __tablename__ = "tags"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    name: str = Field(sa_column=Column(String, unique=True, nullable=False))
-    slug: str = Field(sa_column=Column(String, unique=True, nullable=False, index=True))
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    name: str = Field(sa_column=Column(String(100), unique=True, nullable=False))
+    slug: str = Field(sa_column=Column(String(100), unique=True, nullable=False, index=True))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 
     articles: List["Article"] = Relationship(back_populates="tags", link_model=ArticleTag)

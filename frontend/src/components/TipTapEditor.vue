@@ -133,7 +133,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { useEditor, EditorContent, type JSONContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
@@ -144,11 +144,11 @@ import TableHeader from '@tiptap/extension-table-header'
 import { uploadImage } from '@/composables/useImageUpload'
 
 const props = defineProps<{
-  modelValue: any
+  modelValue: JSONContent
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: any): void
+  (e: 'update:modelValue', value: JSONContent): void
 }>()
 
 const imageInput = ref<HTMLInputElement | null>(null)

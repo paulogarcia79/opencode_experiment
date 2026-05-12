@@ -56,11 +56,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useSearch } from '@/composables/useSearch'
 
 const route = useRoute()
+const router = useRouter()
 const { query, loading, results, searched, error } = useSearch()
 
 function formatDate(dateStr: string): string {
@@ -75,6 +76,13 @@ function formatDate(dateStr: string): string {
 onMounted(() => {
   if (route.query.q) {
     query.value = route.query.q as string
+  }
+})
+
+// Sync query back to URL when search is executed
+watch(searched, () => {
+  if (searched.value && query.value) {
+    router.replace({ query: { q: query.value } })
   }
 })
 </script>

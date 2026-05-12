@@ -39,8 +39,18 @@ router = APIRouter()
 # Public endpoints
 
 @router.get("/api/articles", response_model=list[Article])
-def list_articles_endpoint(session: Session = Depends(get_session)):
-    return list_published_articles(session)
+def list_articles_endpoint(skip: int = 0, limit: int = 50, session: Session = Depends(get_session)):
+    from sqlmodel import select
+    from sqlalchemy.orm import selectinload
+    limit = min(limit, 200)
+    return session.exec(
+        select(Article)
+        .where(Article.status == "published")
+        .order_by(Article.published_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .options(selectinload(Article.tags))
+    ).all()
 
 @router.get("/api/articles/search", response_model=list[Article])
 @limiter.limit(settings.RATE_LIMIT_SEARCH)
@@ -58,7 +68,8 @@ def get_article_endpoint(request: Request, slug: str, session: Session = Depends
     article = get_article_by_slug(session, slug)
     if not article or article.status != "published":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
-    record_view(session, article.id, "127.0.0.1")
+    client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1").split(",")[0].strip()
+    record_view(session, article.id, client_ip)
     session.commit()
     session.refresh(article)
     response = article.model_dump()
@@ -180,63 +191,24 @@ def create_article_endpoint(
     return response
 
 @router.get("/api/admin/articles", response_model=list[Article], dependencies=[Depends(require_admin)])
-def list_admin_articles_endpoint(session: Session = Depends(get_session)):
-    return list_all_articles(session)
+def list_admin_articles_endpoint(skip: int = 0, limit: int = 50, session: Session = Depends(get_session)):
+    from sqlmodel import select
+    from sqlalchemy.orm import selectinload
+    limit = min(limit, 200)
+    return session.exec(
+        select(Article)
+        .order_by(Article.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .options(selectinload(Article.tags))
+    ).all()
 
 @router.get("/api/admin/articles/performance", dependencies=[Depends(require_admin)])
 def get_articles_performance_list(session: Session = Depends(get_session)):
-    from datetime import datetime, timedelta, timezone
-    from app.models.newsletter_send import NewsletterSend as NS
+    from app.services.article_metrics_service import get_articles_metrics_batch
     
     articles = session.exec(select(Article)).all()
-
-    results = []
-    for article in articles:
-        total_views = session.exec(
-            select(func.count(ArticleView.id)).where(ArticleView.article_id == article.id)
-        ).first() or 0
-
-        unique_views_24h = session.exec(
-            select(func.count(func.distinct(ArticleView.ip_hash)))
-            .where(ArticleView.article_id == article.id)
-            .where(ArticleView.viewed_at >= datetime.now(timezone.utc) - timedelta(days=1))
-        ).first() or 0
-
-        email_sent = session.exec(
-            select(func.count(NS.id))
-            .where(NS.article_id == article.id)
-            .where(NS.status == "sent")
-        ).first() or 0
-
-        total_opens = session.exec(
-            select(func.sum(NS.open_count))
-            .where(NS.article_id == article.id)
-        ).first() or 0
-
-        total_clicks = session.exec(
-            select(func.sum(NS.click_count))
-            .where(NS.article_id == article.id)
-        ).first() or 0
-
-        open_rate = (int(total_opens) / email_sent * 100) if email_sent > 0 else 0
-        ctr = (int(total_clicks) / email_sent * 100) if email_sent > 0 else 0
-
-        results.append({
-            "id": str(article.id),
-            "title": article.title,
-            "slug": article.slug,
-            "status": article.status,
-            "published_at": article.published_at.isoformat() if article.published_at else None,
-            "total_views": total_views,
-            "unique_views_24h": unique_views_24h,
-            "email_sent": email_sent,
-            "email_opens": int(total_opens),
-            "email_clicks": int(total_clicks),
-            "email_open_rate": round(open_rate, 2),
-            "email_ctr": round(ctr, 2),
-        })
-
-    return results
+    return get_articles_metrics_batch(session, articles)
 
 @router.get("/api/admin/articles/{article_id}", dependencies=[Depends(require_admin)])
 def get_admin_article_endpoint(article_id: UUID, session: Session = Depends(get_session)):
@@ -378,14 +350,18 @@ def list_tags_endpoint(q: Optional[str] = None, session: Session = Depends(get_s
     if q:
         statement = statement.where(Tag.name.ilike(f"%{q}%"))
     tags = session.exec(statement).all()
-    # Count articles per tag
+    
+    # Single query to get all article counts
+    article_counts = session.exec(
+        select(ArticleTag.tag_id, func.count(ArticleTag.article_id))
+        .group_by(ArticleTag.tag_id)
+    ).all()
+    count_map = {tag_id: count for tag_id, count in article_counts}
+    
     result = []
     for tag in tags:
-        article_count = session.exec(
-            select(func.count(ArticleTag.article_id)).where(ArticleTag.tag_id == tag.id)
-        ).first()
         tag_data = TagRead.model_validate(tag).model_dump()
-        tag_data["article_count"] = article_count or 0
+        tag_data["article_count"] = count_map.get(tag.id, 0)
         result.append(tag_data)
     return result
 

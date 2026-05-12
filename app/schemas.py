@@ -26,6 +26,13 @@ class ArticleUpdate(BaseModel):
     scheduled_for: Optional[datetime] = None
     tag_names: Optional[List[str]] = None
 
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("draft", "published", "scheduled"):
+            raise ValueError("Status must be one of: draft, published, scheduled")
+        return v
+
     @field_validator("tag_names")
     @classmethod
     def max_eight_tags(cls, v: Optional[List[str]]) -> Optional[List[str]]:
@@ -61,6 +68,8 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 class TagRead(BaseModel):
+    model_config = {"from_attributes": True}
+
     id: str
     name: str
     slug: str
@@ -70,19 +79,17 @@ class TagRead(BaseModel):
     def uuid_to_str(cls, v):
         return str(v) if v is not None else v
 
-    class Config:
-        from_attributes = True
-
 class RevisionListRead(BaseModel):
+    model_config = {"from_attributes": True}
+
     version_number: int
     change_type: str
     title: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 class RevisionRead(BaseModel):
+    model_config = {"from_attributes": True}
+
     version_number: int
     change_type: str
     title: str
@@ -90,9 +97,6 @@ class RevisionRead(BaseModel):
     description: Optional[str] = None
     tag_names: List[str]
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 class ImportSuccessItem(BaseModel):
     id: str

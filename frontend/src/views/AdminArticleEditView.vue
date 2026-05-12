@@ -213,6 +213,8 @@ import TagInput from '@/components/TagInput.vue'
 import RevisionPanel from '@/components/RevisionPanel.vue'
 import { createArticle, updateArticle, fetchAdminArticle, sendPreviewEmail } from '@/composables/useAdminApi'
 import { useAutoSave } from '@/composables/useAutoSave'
+import type { TagItem } from '@/components/TagInput.vue'
+import type { TipTapContent } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -221,10 +223,10 @@ const isEditing = ref(false)
 const form = ref({
   title: '',
   description: '',
-  content: { type: 'doc', content: [{ type: 'paragraph' }] },
+  content: { type: 'doc', content: [{ type: 'paragraph' }] } as TipTapContent,
   status: 'draft',
   send_newsletter: true,
-  tags: [] as { name: string; slug: string }[],
+  tags: [] as TagItem[],
 })
 
 const state = ref<'idle' | 'success' | 'error'>('idle')
@@ -238,7 +240,7 @@ const showHistory = ref(false)
 const currentArticleForHistory = computed(() => ({
   title: form.value.title,
   description: form.value.description,
-  content: form.value.content as Record<string, unknown>,
+  content: form.value.content,
   tags: form.value.tags,
 }))
 
@@ -270,9 +272,9 @@ onMounted(async () => {
       form.value.tags = article.tags || []
       articleId.value = id
       editorKey.value++
-    } catch (e: any) {
+    } catch (e: unknown) {
       state.value = 'error'
-      message.value = 'Failed to load article: ' + e.message
+      message.value = 'Failed to load article: ' + (e instanceof Error ? e.message : 'Unknown error')
     }
   }
 })
@@ -303,9 +305,9 @@ async function handleSubmit() {
       router.push(`/admin/articles/${article.id}/edit`)
     }
     state.value = 'success'
-  } catch (e: any) {
-    state.value = 'error'
-    message.value = e.message || 'Something went wrong.'
+    } catch (e: unknown) {
+      state.value = 'error'
+      message.value = (e instanceof Error ? e.message : 'Something went wrong.') || 'Something went wrong.'
   } finally {
     submitting.value = false
   }
@@ -322,20 +324,20 @@ async function handleSendPreview() {
     const res = await sendPreviewEmail(route.params.id as string)
     message.value = res.message || 'Preview sent successfully.'
     state.value = 'success'
-  } catch (e: any) {
+  } catch (e: unknown) {
     state.value = 'error'
-    message.value = e.message || 'Failed to send preview.'
+    message.value = (e instanceof Error ? e.message : 'Failed to send preview.') || 'Failed to send preview.'
   } finally {
     previewing.value = false
   }
 }
 
 async function handleRestored(article: unknown) {
-  const a = article as Record<string, unknown>
-  form.value.title = a.title as string
-  form.value.description = (a.description as string) || ''
-  form.value.content = (a.content as { type: string; content: { type: string }[] }) || { type: 'doc', content: [{ type: 'paragraph' }] }
-  form.value.tags = (a.tags as { name: string; slug: string }[]) || []
+  const a = article as { title: string; description?: string | null; content: TipTapContent; tags: TagItem[] }
+  form.value.title = a.title
+  form.value.description = a.description || ''
+  form.value.content = a.content || { type: 'doc', content: [{ type: 'paragraph' }] }
+  form.value.tags = a.tags || []
   showHistory.value = false
   state.value = 'success'
   message.value = 'Article restored to previous version.'

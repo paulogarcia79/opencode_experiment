@@ -1,5 +1,6 @@
 import uuid
 import re
+from datetime import datetime
 from typing import Optional, List
 from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
@@ -115,7 +116,6 @@ def delete_article(session: Session, article: Article) -> None:
         session.delete(view)
     for send in session.exec(select(NewsletterSend).where(NewsletterSend.article_id == article.id)):
         session.delete(send)
-    session.commit()
 
     session.delete(article)
     session.commit()

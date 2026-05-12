@@ -2,11 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import AdminTagsView from '@/views/AdminTagsView.vue'
 
+vi.mock('@/stores/admin', () => ({
+  useAdminStore: () => ({ token: 'dev-token' }),
+}))
+
 describe('AdminTagsView', () => {
   beforeEach(() => {
-    vi.stubGlobal('localStorage', {
-      getItem: vi.fn().mockReturnValue('dev-token'),
-    })
+    vi.clearAllMocks()
   })
 
   it('renders tags table with article counts', async () => {

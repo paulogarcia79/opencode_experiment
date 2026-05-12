@@ -150,8 +150,9 @@ export function useAutoSave(
         clearTimeout(retryTimer)
         retryTimer = null
       }
-    } catch (e: any) {
-      error.value = e.message || 'Auto-save failed'
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Auto-save failed'
+      error.value = message
       if (retryCount < 3) {
         retryCount++
         const backoff = Math.pow(2, retryCount - 1) * 1000 // 1s, 2s, 4s

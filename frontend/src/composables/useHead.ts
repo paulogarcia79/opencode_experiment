@@ -1,7 +1,10 @@
 /**
  * Lightweight composable for managing document <head> meta tags.
  * Updates title, description, canonical, OpenGraph, and Twitter Card meta tags.
+ * Automatically resets to defaults when the component unmounts.
  */
+import { onUnmounted } from 'vue'
+
 export interface HeadMeta {
   title?: string
   description?: string
@@ -88,6 +91,11 @@ export function useHead(meta: HeadMeta) {
   if (meta.jsonLd) {
     setJsonLd(meta.jsonLd)
   }
+
+  // Reset on unmount
+  onUnmounted(() => {
+    resetHead()
+  })
 }
 
 /**
@@ -108,5 +116,11 @@ export function resetHead() {
   const jsonLdScript = document.querySelector('script[type="application/ld+json"]')
   if (jsonLdScript) {
     jsonLdScript.remove()
+  }
+
+  // Remove canonical link
+  const canonicalLink = document.querySelector('link[rel="canonical"]')
+  if (canonicalLink) {
+    canonicalLink.remove()
   }
 }

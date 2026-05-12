@@ -42,10 +42,12 @@ def validate_reset_token(token: str, session):
     from sqlmodel import Session, select
     from app.models.user import User
     
-    users = session.exec(select(User)).all()
-    for user in users:
-        if user.reset_token_hash is None:
-            continue
+    # Query only users with non-null reset_token_hash
+    users_with_tokens = session.exec(
+        select(User).where(User.reset_token_hash.isnot(None))
+    ).all()
+    
+    for user in users_with_tokens:
         if user.reset_token_expires_at is None:
             continue
         # Handle both naive and aware datetimes for SQLite compatibility

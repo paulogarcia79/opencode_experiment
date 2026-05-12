@@ -4,6 +4,7 @@ import AdminArticlesView from '@/views/AdminArticlesView.vue'
 
 vi.mock('@/composables/useAdminApi', () => ({
   fetchAdminArticles: vi.fn(),
+  fetchArticlePerformance: vi.fn().mockResolvedValue([]),
   deleteArticle: vi.fn(),
   getAuthHeaders: vi.fn(() => ({ Authorization: 'Bearer test-token' })),
 }))

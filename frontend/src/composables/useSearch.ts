@@ -37,8 +37,9 @@ export function useSearch() {
         throw new Error(data.detail || 'Search failed')
       }
       results.value = await res.json()
-    } catch (e: any) {
-      error.value = e.message || 'Search failed'
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Search failed'
+      error.value = message
       results.value = []
     } finally {
       loading.value = false

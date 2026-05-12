@@ -1,7 +1,10 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 from typing import List
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/blog"
     ADMIN_API_TOKEN: str = "dev-token-change-in-production"
     ADMIN_EMAIL: str = "admin@example.com"
@@ -33,8 +36,34 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_ID: str = ""
     GITHUB_CLIENT_SECRET: str = ""
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    # Debug/Dev
+    SQL_ECHO: bool = False
+
+    @field_validator("ADMIN_API_TOKEN")
+    @classmethod
+    def validate_admin_token(cls, v: str) -> str:
+        if v == "dev-token-change-in-production":
+            import os
+            if os.getenv("APP_ENV", "development") != "development":
+                raise ValueError("ADMIN_API_TOKEN must be set to a secure value in production")
+        return v
+
+    @field_validator("JWT_SECRET_KEY")
+    @classmethod
+    def validate_jwt_secret(cls, v: str) -> str:
+        if v == "super-secret-key-change-in-production":
+            import os
+            if os.getenv("APP_ENV", "development") != "development":
+                raise ValueError("JWT_SECRET_KEY must be set to a secure value in production")
+        return v
+
+    @field_validator("ADMIN_PASSWORD")
+    @classmethod
+    def validate_admin_password(cls, v: str) -> str:
+        if v == "admin":
+            import os
+            if os.getenv("APP_ENV", "development") != "development":
+                raise ValueError("ADMIN_PASSWORD must be set to a secure value in production")
+        return v
 
 settings = Settings()

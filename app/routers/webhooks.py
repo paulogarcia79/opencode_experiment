@@ -134,10 +134,12 @@ async def resend_webhook(request: Request, session: Session = Depends(get_sessio
                             logger.info(f"Unsubscribed {email_addr} due to complaint")
                 
                 session.add(send_record)
+            
+            session.commit()
                 
         except Exception as e:
             logger.error(f"Error processing webhook event: {e}")
+            session.rollback()
             continue
 
-    session.commit()
     return {"status": "ok"}

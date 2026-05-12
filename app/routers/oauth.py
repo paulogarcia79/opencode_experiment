@@ -2,6 +2,7 @@ import uuid
 from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlmodel import Session, select
 from starlette.datastructures import URL
 from app.database import get_session
@@ -12,11 +13,22 @@ from app.services.oauth_service import OAuthService, SUPPORTED_PROVIDERS
 from app.services.auth_service import create_access_token, get_password_hash
 from app.services.email_service import send_verification_email
 import secrets
+import redis.asyncio as aioredis
 
 router = APIRouter(prefix="/api/auth/oauth", tags=["auth"])
 
 # In-memory state store for CSRF protection: state -> redirect_uri
 _oauth_states: dict[str, str] = {}
+
+OAUTH_CODE_TTL_SECONDS = 300  # 5 minutes
+
+
+def _get_redis() -> aioredis.Redis:
+    return aioredis.from_url(settings.REDIS_URL)
+
+
+class OAuthExchangeRequest(BaseModel):
+    code: str
 
 
 class OAuthHandler:
@@ -77,11 +89,20 @@ class OAuthHandler:
                         user_data["email"] = primary.get("email")
                         user_data["email_verified"] = primary.get("verified", False)
                     return user_data
-        # Fallback: decode ID token for Google
+        # Fallback: decode ID token for Google with signature verification
         if provider == "google" and "id_token" in token:
             import jwt
+            from jwt import PyJWKClient
             id_token = token["id_token"]
-            return jwt.decode(id_token, options={"verify_signature": False})
+            # Fetch Google's public keys to verify the signature
+            jwks_client = PyJWKClient("https://www.googleapis.com/oauth2/v3/certs")
+            signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+            return jwt.decode(
+                id_token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=settings.GOOGLE_CLIENT_ID,
+            )
         return token
 
 
@@ -166,11 +187,16 @@ async def oauth_callback(request: Request, session: Session = Depends(get_sessio
             session.add(oauth_provider)
             session.commit()
 
-        # Generate JWT and redirect to login page to process oauth_token
+        # Generate JWT and store in Redis as one-time code
         jwt_token = create_access_token(
             data={"sub": str(existing_user.id), "token_version": existing_user.token_version}
         )
-        frontend_url = f"{settings.APP_BASE_URL}/admin/login?oauth_token={jwt_token}"
+        oauth_code = secrets.token_urlsafe(32)
+        redis_conn = _get_redis()
+        await redis_conn.setex(f"oauth_code:{oauth_code}", OAUTH_CODE_TTL_SECONDS, jwt_token)
+        await redis_conn.aclose()
+
+        frontend_url = f"{settings.APP_BASE_URL}/admin/login?oauth_code={oauth_code}"
         return RedirectResponse(url=frontend_url, status_code=302)
     else:
         # Create new user
@@ -212,3 +238,26 @@ def _send_verification(user: User, session: Session) -> None:
     session.add(user)
 
     send_verification_email(user.email, plaintext)
+
+
+@router.post("/exchange")
+async def oauth_exchange(request: OAuthExchangeRequest):
+    """Exchange a one-time OAuth code for a JWT token.
+
+    The code is single-use and expires after 5 minutes.
+    """
+    redis_conn = _get_redis()
+    key = f"oauth_code:{request.code}"
+    jwt_token = await redis_conn.get(key)
+    if not jwt_token:
+        await redis_conn.aclose()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth code",
+        )
+
+    # Delete the code immediately (single-use)
+    await redis_conn.delete(key)
+    await redis_conn.aclose()
+
+    return {"token": jwt_token.decode() if isinstance(jwt_token, bytes) else jwt_token, "type": "bearer"}

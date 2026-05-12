@@ -47,6 +47,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { copyToClipboard } from '@/composables/useClipboard'
 
 const props = defineProps<{
   url: string
@@ -68,20 +69,8 @@ const linkedinUrl = computed(() => {
 })
 
 async function copyLink() {
-  try {
-    await navigator.clipboard.writeText(props.url)
-    copyToast.value = true
-    setTimeout(() => {
-      copyToast.value = false
-    }, 2000)
-  } catch {
-    // Fallback for browsers without clipboard API
-    const textarea = document.createElement('textarea')
-    textarea.value = props.url
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
+  const success = await copyToClipboard(props.url)
+  if (success) {
     copyToast.value = true
     setTimeout(() => {
       copyToast.value = false

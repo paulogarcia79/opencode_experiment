@@ -88,12 +88,12 @@ def verify_email(request: dict, session: Session = Depends(get_session)):
             detail="Token is required.",
         )
 
-    # Find user with matching verification token
-    users = session.exec(select(User)).all()
+    # Find user with matching verification token - query only users with non-null tokens
+    users_with_tokens = session.exec(
+        select(User).where(User.verification_token_hash.isnot(None))
+    ).all()
     matched_user = None
-    for user in users:
-        if user.verification_token_hash is None:
-            continue
+    for user in users_with_tokens:
         if user.verification_token_expires_at is None:
             continue
         if user.is_verified:

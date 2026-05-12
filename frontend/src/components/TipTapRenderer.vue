@@ -1,18 +1,21 @@
 <template>
   <article class="prose prose-invert prose-slate max-w-none">
-    <div v-html="htmlContent" />
+    <div v-html="sanitizedHtml" />
   </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import DOMPurify from 'dompurify'
 import { renderTipTapJSON } from '@/composables/useTipTap'
+import type { TipTapContent } from '@/types'
 
 const props = defineProps<{
-  content: any
+  content: TipTapContent
 }>()
 
 const htmlContent = computed(() => renderTipTapJSON(props.content))
+const sanitizedHtml = computed(() => DOMPurify.sanitize(htmlContent.value))
 </script>
 
 <style scoped>

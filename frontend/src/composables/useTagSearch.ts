@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { getAuthHeaders } from '@/composables/useAdminApi'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -20,9 +21,7 @@ export function useTagSearch() {
     loading.value = true
     try {
       const res = await fetch(`${API_BASE}/api/admin/tags?q=${encodeURIComponent(query)}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}`,
-        },
+        headers: getAuthHeaders(),
       })
       if (res.ok) {
         const data = await res.json()

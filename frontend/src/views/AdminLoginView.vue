@@ -122,7 +122,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAdminStore } from '@/stores/admin'
-import { login } from '@/composables/useAdminApi'
+import { login, exchangeOAuthCode } from '@/composables/useAdminApi'
 
 const email = ref('')
 const password = ref('')
@@ -133,11 +133,16 @@ const router = useRouter()
 const route = useRoute()
 const store = useAdminStore()
 
-onMounted(() => {
-  const oauthToken = route.query.oauth_token as string
-  if (oauthToken) {
-    store.setToken(oauthToken)
-    router.replace('/admin')
+onMounted(async () => {
+  const oauthCode = route.query.oauth_code as string
+  if (oauthCode) {
+    try {
+      const data = await exchangeOAuthCode(oauthCode)
+      store.setToken(data.token)
+      router.replace('/admin')
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : 'OAuth login failed'
+    }
   }
 })
 

@@ -132,11 +132,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { fetchAdminArticles, deleteArticle, getAuthHeaders } from '@/composables/useAdminApi'
+import { fetchAdminArticles, deleteArticle, fetchArticlePerformance } from '@/composables/useAdminApi'
+import type { ArticleWithPerformance } from '@/types'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
-
-const articles = ref<any[]>([])
+const articles = ref<ArticleWithPerformance[]>([])
 const loading = ref(true)
 const error = ref('')
 
@@ -148,16 +147,16 @@ async function loadArticles() {
   try {
     const [articlesList, performanceList] = await Promise.all([
       fetchAdminArticles(),
-      fetch(`${API_BASE}/api/admin/articles/performance`, { headers: getAuthHeaders() }).then(r => r.json()),
+      fetchArticlePerformance(),
     ])
 
-    const perfMap = new Map(performanceList.map((p: any) => [p.id, p]))
-    articles.value = articlesList.map((a: any) => {
+    const perfMap = new Map(performanceList.map((p) => [p.id, p]))
+    articles.value = articlesList.map((a) => {
       const perf = perfMap.get(a.id)
       return perf ? { ...a, ...perf } : a
     })
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Failed to load articles'
   } finally {
     loading.value = false
   }
@@ -168,8 +167,8 @@ async function handleDelete(id: string) {
   try {
     await deleteArticle(id)
     await loadArticles()
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Failed to delete article'
   }
 }
 

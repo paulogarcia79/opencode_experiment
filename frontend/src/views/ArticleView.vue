@@ -44,7 +44,7 @@
       <!-- Article Header -->
       <header class="mb-12">
         <h1 class="text-3xl sm:text-4xl font-display font-bold text-white tracking-tight leading-tight">
-          {{ article.title }}
+          {{ loadedArticle.title }}
         </h1>
         <div class="mt-6 flex flex-wrap items-center gap-4 text-sm text-slate-500">
           <div class="flex items-center gap-2">
@@ -56,17 +56,17 @@
             <span class="font-medium text-slate-400">Author</span>
           </div>
           <span class="w-1 h-1 rounded-full bg-slate-600" />
-          <time :datetime="article.published_at" class="font-mono text-xs">{{ formatDate(article.published_at) }}</time>
+          <time :datetime="loadedArticle.published_at ?? undefined" class="font-mono text-xs">{{ formatDate(loadedArticle.published_at ?? '') }}</time>
           <span class="w-1 h-1 rounded-full bg-slate-600" />
-          <span class="font-mono text-xs">{{ formatReadingTime(estimateReadingTime(article.content)) }}</span>
+          <span class="font-mono text-xs">{{ formatReadingTime(estimateReadingTime(loadedArticle.content)) }}</span>
           <span class="w-1 h-1 rounded-full bg-slate-600" />
-          <span class="font-mono text-xs">{{ article.slug }}</span>
+          <span class="font-mono text-xs">{{ loadedArticle.slug }}</span>
         </div>
 
         <!-- Tags -->
-        <div v-if="article.tags && article.tags.length > 0" class="mt-4 flex flex-wrap gap-2">
+        <div v-if="loadedArticle.tags && loadedArticle.tags.length > 0" class="mt-4 flex flex-wrap gap-2">
           <RouterLink
-            v-for="tag in article.tags"
+            v-for="tag in loadedArticle.tags"
             :key="tag.slug"
             :to="`/tags/${tag.slug}`"
             class="inline-flex items-center px-2.5 py-0.5 rounded-md border border-white/10 text-xs font-mono text-slate-400 hover:border-primary-500/30 hover:text-primary-400 transition-colors cursor-pointer"
@@ -78,7 +78,7 @@
 
       <!-- Article Body -->
       <div class="prose prose-invert prose-slate max-w-none article-content">
-        <TipTapRenderer :content="article.content" />
+        <TipTapRenderer :content="loadedArticle.content" />
       </div>
 
       <!-- Share Section -->
@@ -87,8 +87,8 @@
           <span class="text-sm text-slate-500">Share this article</span>
           <ShareButtons
             :url="shareUrl"
-            :title="article.title"
-            :description="article.description || ''"
+            :title="loadedArticle.title"
+            :description="loadedArticle.description || ''"
           />
         </div>
       </div>
@@ -132,9 +132,10 @@ import { estimateReadingTime, formatReadingTime } from '@/composables/useReading
 import TipTapRenderer from '@/components/TipTapRenderer.vue'
 import NewsletterForm from '@/components/NewsletterForm.vue'
 import ShareButtons from '@/components/ShareButtons.vue'
+import type { Article } from '@/types'
 
 const route = useRoute()
-const article = ref<any>(null)
+const article = ref<Article | null>(null)
 const loading = ref(true)
 const error = ref('')
 
@@ -142,6 +143,8 @@ const shareUrl = computed(() => {
   if (!article.value) return ''
   return `${window.location.origin}/articles/${article.value.slug}`
 })
+
+const loadedArticle = computed(() => article.value!)
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return ''
@@ -154,32 +157,33 @@ function formatDate(dateStr: string): string {
 
 onMounted(async () => {
   try {
-    article.value = await fetchArticle(route.params.slug as string)
+    const fetched = await fetchArticle(route.params.slug as string)
+    article.value = fetched
     const baseUrl = window.location.origin
     useHead({
-      title: article.value.title,
-      description: article.value.description || undefined,
-      canonical: `${baseUrl}/articles/${article.value.slug}`,
-      ogTitle: article.value.title,
-      ogDescription: article.value.description || undefined,
+      title: fetched.title,
+      description: fetched.description || undefined,
+      canonical: `${baseUrl}/articles/${fetched.slug}`,
+      ogTitle: fetched.title,
+      ogDescription: fetched.description || undefined,
       ogType: 'article',
-      ogUrl: `${baseUrl}/articles/${article.value.slug}`,
-      twitterTitle: article.value.title,
-      twitterDescription: article.value.description || undefined,
+      ogUrl: `${baseUrl}/articles/${fetched.slug}`,
+      twitterTitle: fetched.title,
+      twitterDescription: fetched.description || undefined,
       jsonLd: {
         '@context': 'https://schema.org',
         '@type': 'Article',
-        headline: article.value.title,
-        description: article.value.description || undefined,
-        datePublished: article.value.published_at,
-        dateModified: article.value.updated_at,
+        headline: fetched.title,
+        description: fetched.description || undefined,
+        datePublished: fetched.published_at ?? undefined,
+        dateModified: fetched.updated_at,
         author: { '@type': 'Organization', name: 'Tech & Games Blog' },
         publisher: { '@type': 'Organization', name: 'Tech & Games Blog' },
-        mainEntityOfPage: `${baseUrl}/articles/${article.value.slug}`,
+        mainEntityOfPage: `${baseUrl}/articles/${fetched.slug}`,
       },
     })
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Failed to load article'
   } finally {
     loading.value = false
   }

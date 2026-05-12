@@ -1,4 +1,5 @@
 import { useAdminStore } from '@/stores/admin'
+import type { Article, ArticlePerformance, AnalyticsData, TagSuggestion, ImageAsset } from '@/types'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -17,7 +18,20 @@ export async function login(email: string, password: string) {
     const errorData = await res.json().catch(() => ({}))
     throw new Error(errorData.detail || 'Login failed')
   }
-  return res.json()
+  return res.json() as Promise<{ token: string; type: string }>
+}
+
+export async function exchangeOAuthCode(code: string) {
+  const res = await fetch(`${API_BASE}/api/auth/oauth/exchange`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'OAuth code exchange failed')
+  }
+  return res.json() as Promise<{ token: string; type: string }>
 }
 
 export async function fetchAnalytics(range: string = '30d') {
@@ -25,40 +39,59 @@ export async function fetchAnalytics(range: string = '30d') {
     headers: getAuthHeaders(),
   })
   if (!res.ok) throw new Error('Failed to fetch analytics')
-  return res.json()
+  return res.json() as Promise<AnalyticsData>
 }
 
 export async function fetchAdminArticles() {
   const res = await fetch(`${API_BASE}/api/admin/articles`, { headers: getAuthHeaders() })
   if (!res.ok) throw new Error('Failed to fetch articles')
-  return res.json()
+  return res.json() as Promise<Article[]>
 }
 
 
 export async function fetchAdminArticle(id: string) {
   const res = await fetch(`${API_BASE}/api/admin/articles/${id}`, { headers: getAuthHeaders() })
   if (!res.ok) throw new Error('Failed to fetch article')
-  return res.json()
+  return res.json() as Promise<Article>
 }
 
-export async function createArticle(data: any) {
+export interface ArticleCreatePayload {
+  title: string
+  content?: Record<string, unknown>
+  description?: string
+  send_newsletter?: boolean
+  scheduled_for?: string | null
+  tag_names?: string[]
+}
+
+export interface ArticleUpdatePayload {
+  title?: string
+  content?: Record<string, unknown>
+  description?: string
+  status?: string
+  send_newsletter?: boolean
+  scheduled_for?: string | null
+  tag_names?: string[]
+}
+
+export async function createArticle(data: ArticleCreatePayload) {
   const res = await fetch(`${API_BASE}/api/admin/articles`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error('Failed to create article')
-  return res.json()
+  return res.json() as Promise<Article>
 }
 
-export async function updateArticle(id: string, data: any) {
+export async function updateArticle(id: string, data: ArticleUpdatePayload) {
   const res = await fetch(`${API_BASE}/api/articles/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error('Failed to update article')
-  return res.json()
+  return res.json() as Promise<Article>
 }
 
 export async function deleteArticle(id: string) {
@@ -69,10 +102,16 @@ export async function deleteArticle(id: string) {
   if (!res.ok) throw new Error('Failed to delete article')
 }
 
+export async function fetchArticlePerformance() {
+  const res = await fetch(`${API_BASE}/api/admin/articles/performance`, { headers: getAuthHeaders() })
+  if (!res.ok) throw new Error('Failed to fetch article performance')
+  return res.json() as Promise<ArticlePerformance[]>
+}
+
 export async function fetchAdminImages() {
   const res = await fetch(`${API_BASE}/api/admin/images`, { headers: getAuthHeaders() })
   if (!res.ok) throw new Error('Failed to fetch images')
-  return res.json()
+  return res.json() as Promise<ImageAsset[]>
 }
 
 export async function deleteImage(id: string) {
@@ -81,6 +120,27 @@ export async function deleteImage(id: string) {
     headers: getAuthHeaders(),
   })
   if (!res.ok) throw new Error('Failed to delete image')
+}
+
+export async function fetchAdminTags(query?: string) {
+  const url = query
+    ? `${API_BASE}/api/admin/tags?q=${encodeURIComponent(query)}`
+    : `${API_BASE}/api/admin/tags`
+  const res = await fetch(url, { headers: getAuthHeaders() })
+  if (!res.ok) throw new Error('Failed to fetch tags')
+  return res.json() as Promise<TagSuggestion[]>
+}
+
+export async function deleteAdminTag(id: string) {
+  const res = await fetch(`${API_BASE}/api/admin/tags/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    const detail = errorData.detail
+    throw new Error(typeof detail === 'string' ? detail : detail?.detail || 'Delete failed')
+  }
 }
 
 export async function sendPreviewEmail(id: string) {
@@ -92,7 +152,7 @@ export async function sendPreviewEmail(id: string) {
     const errorData = await res.json().catch(() => ({}))
     throw new Error(errorData.detail || 'Failed to send preview email')
   }
-  return res.json()
+  return res.json() as Promise<{ message: string }>
 }
 
 export async function forgotPassword(email: string) {
@@ -188,7 +248,7 @@ export async function fetchRevisions(articleId: string): Promise<RevisionListIte
     headers: getAuthHeaders(),
   })
   if (!res.ok) throw new Error('Failed to fetch revisions')
-  return res.json()
+  return res.json() as Promise<RevisionListItem[]>
 }
 
 export async function fetchRevision(articleId: string, versionNumber: number): Promise<Revision> {
@@ -196,7 +256,7 @@ export async function fetchRevision(articleId: string, versionNumber: number): P
     headers: getAuthHeaders(),
   })
   if (!res.ok) throw new Error('Failed to fetch revision')
-  return res.json()
+  return res.json() as Promise<Revision>
 }
 
 export async function restoreRevision(articleId: string, versionNumber: number) {

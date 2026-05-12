@@ -96,7 +96,7 @@
                 {{ article.title }}
               </h3>
               <div class="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                <time :datetime="article.published_at" class="font-mono text-xs">{{ formatDate(article.published_at) }}</time>
+                <time :datetime="article.published_at ?? undefined" class="font-mono text-xs">{{ formatDate(article.published_at ?? '') }}</time>
                 <span class="w-1 h-1 rounded-full bg-slate-600" />
                 <span class="font-mono text-xs">{{ formatReadingTime(estimateReadingTime(article.content)) }}</span>
               </div>
@@ -129,10 +129,11 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { estimateReadingTime, formatReadingTime } from '@/composables/useReadingTime'
+import type { Article, TagArticlesResponse } from '@/types'
 
 const route = useRoute()
 const tagName = ref('')
-const articles = ref<any[]>([])
+const articles = ref<Article[]>([])
 const loading = ref(true)
 const error = ref('')
 
@@ -157,11 +158,11 @@ onMounted(async () => {
       }
       return
     }
-    const data = await res.json()
+    const data = await res.json() as TagArticlesResponse
     tagName.value = data.name
     articles.value = data.articles || []
-  } catch (e: any) {
-    error.value = e.message || 'Failed to load tag'
+  } catch (e: unknown) {
+    error.value = (e instanceof Error ? e.message : 'Failed to load tag') || 'Failed to load tag'
   } finally {
     loading.value = false
   }

@@ -10,6 +10,7 @@ const mockRoute = {
 
 vi.mock('vue-router', () => ({
   useRoute: () => mockRoute,
+  useRouter: () => ({ replace: vi.fn() }),
 }))
 
 describe('SearchView', () => {

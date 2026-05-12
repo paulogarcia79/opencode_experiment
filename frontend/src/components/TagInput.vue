@@ -29,6 +29,7 @@
         placeholder="Add tag..."
         @keydown.enter.prevent="handleEnter"
         @keydown.backspace="handleBackspace"
+        @keydown="handleKeyDown"
       />
     </div>
 
@@ -36,12 +37,18 @@
     <div
       v-if="showSuggestions && filteredSuggestions.length > 0"
       class="absolute z-50 w-full mt-1 bg-surface-900 border border-white/10 rounded-lg shadow-xl overflow-hidden"
+      role="listbox"
     >
       <button
-        v-for="suggestion in filteredSuggestions"
+        v-for="(suggestion, index) in filteredSuggestions"
         :key="suggestion.slug"
         type="button"
-        class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-white/5 transition-colors"
+        role="option"
+        :aria-selected="activeSuggestionIndex === index"
+        :class="[
+          'w-full text-left px-3 py-2 text-sm transition-colors',
+          activeSuggestionIndex === index ? 'bg-primary-500/20 text-primary-300' : 'text-slate-300 hover:bg-white/5',
+        ]"
         @click="selectTag(suggestion)"
       >
         {{ suggestion.name }}
@@ -69,6 +76,7 @@ const emit = defineEmits<{
 
 const query = ref('')
 const showSuggestions = ref(false)
+const activeSuggestionIndex = ref(-1)
 const { suggestions, fetchSuggestions } = useTagSearch()
 
 const disabled = computed(() => props.modelValue.length >= 8)
@@ -86,6 +94,7 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(query, (val) => {
   if (debounceTimer) clearTimeout(debounceTimer)
+  activeSuggestionIndex.value = -1
   debounceTimer = setTimeout(() => {
     fetchSuggestions(val)
     showSuggestions.value = true
@@ -122,5 +131,24 @@ function handleBackspace() {
 
 function removeTag(index: number) {
   emit('update:modelValue', props.modelValue.filter((_, i) => i !== index))
+}
+
+function handleKeyDown(event: KeyboardEvent) {
+  const count = filteredSuggestions.value.length
+  if (!showSuggestions.value || count === 0) return
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    activeSuggestionIndex.value = (activeSuggestionIndex.value + 1) % count
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    activeSuggestionIndex.value = (activeSuggestionIndex.value - 1 + count) % count
+  } else if (event.key === 'Enter' && activeSuggestionIndex.value >= 0) {
+    event.preventDefault()
+    selectTag(filteredSuggestions.value[activeSuggestionIndex.value])
+  } else if (event.key === 'Escape') {
+    showSuggestions.value = false
+    activeSuggestionIndex.value = -1
+  }
 }
 </script>

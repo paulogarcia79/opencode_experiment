@@ -87,9 +87,7 @@ def disconnect_oauth(
     all_providers = session.exec(
         select(UserOAuthProvider).where(UserOAuthProvider.user_id == user.id)
     ).all()
-    has_password = user.hashed_password and not user.hashed_password.startswith("$2b$12$")  # Random unusable password check
     
-    # A more reliable check: if the user has only this OAuth provider and no real password
     if len(all_providers) == 1 and not has_real_password(user):
         raise HTTPException(
             status_code=400,

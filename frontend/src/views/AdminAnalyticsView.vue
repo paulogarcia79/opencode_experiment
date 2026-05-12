@@ -1,194 +1,3 @@
-<script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
-import { fetchAnalytics, getAuthHeaders } from '@/composables/useAdminApi'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js'
-import { Line, Doughnut } from 'vue-chartjs'
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-)
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
-
-const range = ref<'7d' | '30d' | '90d'>('30d')
-const analyticsData = ref<any>(null)
-const performanceData = ref<any[]>([])
-const loading = ref(true)
-
-const growthChartData = computed(() => {
-  if (!analyticsData.value) return null
-
-  const signups = analyticsData.value.growth.signups
-  const unsubscribes = analyticsData.value.growth.unsubscribes
-
-  // Combine all unique dates and sort them
-  const allDates = Array.from(new Set([
-    ...signups.map((s: any) => s.date),
-    ...unsubscribes.map((u: any) => u.date)
-  ])).sort()
-
-  return {
-    labels: allDates,
-    datasets: [
-      {
-        label: 'Signups',
-        data: allDates.map(date => {
-          const match = signups.find((s: any) => s.date === date)
-          return match ? match.count : 0
-        }),
-        borderColor: '#10b981', // emerald-500
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        tension: 0.4,
-        fill: true,
-      },
-      {
-        label: 'Unsubscribes',
-        data: allDates.map(date => {
-          const match = unsubscribes.find((u: any) => u.date === date)
-          return match ? match.count : 0
-        }),
-        borderColor: '#f43f5e', // rose-500
-        backgroundColor: 'rgba(244, 63, 94, 0.1)',
-        tension: 0.4,
-        fill: true,
-      }
-    ]
-  }
-})
-
-const engagementChartData = computed(() => {
-  if (!analyticsData.value) return null
-
-  const opens = analyticsData.value.growth.opens
-  const clicks = analyticsData.value.growth.clicks
-
-  const allDates = Array.from(new Set([
-    ...opens.map((s: any) => s.date),
-    ...clicks.map((u: any) => u.date)
-  ])).sort()
-
-  return {
-    labels: allDates,
-    datasets: [
-      {
-        label: 'Opens',
-        data: allDates.map(date => {
-          const match = opens.find((s: any) => s.date === date)
-          return match ? match.count : 0
-        }),
-        borderColor: '#6366f1', // primary-500
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-        tension: 0.4,
-        fill: true,
-      },
-      {
-        label: 'Clicks',
-        data: allDates.map(date => {
-          const match = clicks.find((u: any) => u.date === date)
-          return match ? match.count : 0
-        }),
-        borderColor: '#f43f5e', // rose-500
-        backgroundColor: 'rgba(244, 63, 94, 0.1)',
-        tension: 0.4,
-        fill: true,
-      }
-    ]
-  }
-})
-
-const deliveryChartData = computed(() => {
-  if (!analyticsData.value) return null
-
-  const { sent, failed, pending } = analyticsData.value.delivery
-
-  return {
-    labels: ['Sent', 'Failed', 'Pending'],
-    datasets: [
-      {
-        data: [sent, failed, pending],
-        backgroundColor: [
-          '#10b981', // emerald-500
-          '#f43f5e', // rose-500
-          '#6366f1', // primary-500
-        ],
-        borderWidth: 0,
-        hoverOffset: 4
-      }
-    ]
-  }
-})
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: true,
-      position: 'top' as const,
-      labels: {
-        color: '#94a3b8',
-        font: { family: 'Inter' }
-      }
-    },
-    tooltip: {
-      mode: 'index' as const,
-      intersect: false,
-    }
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      grid: { color: 'rgba(255, 255, 255, 0.05)' },
-      ticks: { color: '#64748b' }
-    },
-    x: {
-      grid: { display: false },
-      ticks: { color: '#64748b' }
-    }
-  }
-}
-
-async function loadAnalytics() {
-  loading.value = true
-  try {
-    const [analytics, performance] = await Promise.all([
-      fetchAnalytics(range.value),
-      fetch(`${API_BASE}/api/admin/articles/performance`, { headers: getAuthHeaders() }).then(r => r.json()),
-    ])
-    analyticsData.value = analytics
-    performanceData.value = performance.sort((a: any, b: any) => b.total_views - a.total_views)
-  } catch (err) {
-    console.error('Failed to fetch analytics:', err)
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(loadAnalytics)
-watch(range, loadAnalytics)
-</script>
-
 <template>
   <div>
     <div class="flex items-center justify-between mb-8">
@@ -198,7 +7,7 @@ watch(range, loadAnalytics)
         <button 
           v-for="r in ['7d', '30d', '90d']" 
           :key="r"
-          @click="range = r as any"
+          @click="range = r as '7d' | '30d' | '90d'"
           :class="[
             'px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer',
             range === r ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/20' : 'text-slate-400 hover:text-white'
@@ -355,3 +164,192 @@ watch(range, loadAnalytics)
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { ref, onMounted, watch, computed } from 'vue'
+import { fetchAnalytics, fetchArticlePerformance } from '@/composables/useAdminApi'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js'
+import { Line, Doughnut } from 'vue-chartjs'
+import type { AnalyticsData, ArticlePerformance, GrowthSeries } from '@/types'
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+)
+
+const range = ref<'7d' | '30d' | '90d'>('30d')
+const analyticsData = ref<AnalyticsData | null>(null)
+const performanceData = ref<ArticlePerformance[]>([])
+const loading = ref(true)
+
+const growthChartData = computed(() => {
+  if (!analyticsData.value) return null
+
+  const signups = analyticsData.value.growth.signups
+  const unsubscribes = analyticsData.value.growth.unsubscribes
+
+  const allDates = Array.from(new Set([
+    ...signups.map((s: GrowthSeries) => s.date),
+    ...unsubscribes.map((u: GrowthSeries) => u.date)
+  ])).sort()
+
+  return {
+    labels: allDates,
+    datasets: [
+      {
+        label: 'Signups',
+        data: allDates.map(date => {
+          const match = signups.find((s: GrowthSeries) => s.date === date)
+          return match ? match.count : 0
+        }),
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        tension: 0.4,
+        fill: true,
+      },
+      {
+        label: 'Unsubscribes',
+        data: allDates.map(date => {
+          const match = unsubscribes.find((item: GrowthSeries) => item.date === date)
+          return match ? match.count : 0
+        }),
+        borderColor: '#f43f5e',
+        backgroundColor: 'rgba(244, 63, 94, 0.1)',
+        tension: 0.4,
+        fill: true,
+      }
+    ]
+  }
+})
+
+const engagementChartData = computed(() => {
+  if (!analyticsData.value) return null
+
+  const opens = analyticsData.value.growth.opens
+  const clicks = analyticsData.value.growth.clicks
+
+  const allDates = Array.from(new Set([
+    ...opens.map((s: GrowthSeries) => s.date),
+    ...clicks.map((u: GrowthSeries) => u.date)
+  ])).sort()
+
+  return {
+    labels: allDates,
+    datasets: [
+      {
+        label: 'Opens',
+        data: allDates.map(date => {
+          const match = opens.find((s: GrowthSeries) => s.date === date)
+          return match ? match.count : 0
+        }),
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        tension: 0.4,
+        fill: true,
+      },
+      {
+        label: 'Clicks',
+        data: allDates.map(date => {
+          const match = clicks.find((c: GrowthSeries) => c.date === date)
+          return match ? match.count : 0
+        }),
+        borderColor: '#f43f5e',
+        backgroundColor: 'rgba(244, 63, 94, 0.1)',
+        tension: 0.4,
+        fill: true,
+      }
+    ]
+  }
+})
+
+const deliveryChartData = computed(() => {
+  if (!analyticsData.value) return null
+
+  const { sent, failed, pending } = analyticsData.value.delivery
+
+  return {
+    labels: ['Sent', 'Failed', 'Pending'],
+    datasets: [
+      {
+        data: [sent, failed, pending],
+        backgroundColor: [
+          '#10b981',
+          '#f43f5e',
+          '#6366f1',
+        ],
+        borderWidth: 0,
+        hoverOffset: 4
+      }
+    ]
+  }
+})
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: true,
+      position: 'top' as const,
+      labels: {
+        color: '#94a3b8',
+        font: { family: 'Inter' }
+      }
+    },
+    tooltip: {
+      mode: 'index' as const,
+      intersect: false,
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      grid: { color: 'rgba(255, 255, 255, 0.05)' },
+      ticks: { color: '#64748b' }
+    },
+    x: {
+      grid: { display: false },
+      ticks: { color: '#64748b' }
+    }
+  }
+}
+
+async function loadAnalytics() {
+  loading.value = true
+  try {
+    const [analytics, performance] = await Promise.all([
+      fetchAnalytics(range.value),
+      fetchArticlePerformance(),
+    ])
+    analyticsData.value = analytics
+    performanceData.value = performance.sort((a, b) => b.total_views - a.total_views)
+  } catch (err) {
+    console.error('Failed to fetch analytics:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadAnalytics)
+watch(range, loadAnalytics)
+</script>

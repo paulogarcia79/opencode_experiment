@@ -200,52 +200,7 @@ def get_article_analytics(article_id: UUID, session: Session = Depends(get_sessi
 
 @article_analytics_router.get("/performance", dependencies=[Depends(require_admin)])
 def get_articles_performance_list(session: Session = Depends(get_session)):
+    from app.services.article_metrics_service import get_articles_metrics_batch
+    
     articles = session.exec(select(Article)).all()
-
-    results = []
-    for article in articles:
-        total_views = session.exec(
-            select(func.count(ArticleView.id)).where(ArticleView.article_id == article.id)
-        ).first() or 0
-
-        unique_views_24h = session.exec(
-            select(func.count(func.distinct(ArticleView.ip_hash)))
-            .where(ArticleView.article_id == article.id)
-            .where(ArticleView.viewed_at >= datetime.now(timezone.utc) - timedelta(days=1))
-        ).first() or 0
-
-        email_sent = session.exec(
-            select(func.count(NS.id))
-            .where(NS.article_id == article.id)
-            .where(NS.status == "sent")
-        ).first() or 0
-
-        total_opens = session.exec(
-            select(func.sum(NS.open_count))
-            .where(NS.article_id == article.id)
-        ).first() or 0
-
-        total_clicks = session.exec(
-            select(func.sum(NS.click_count))
-            .where(NS.article_id == article.id)
-        ).first() or 0
-
-        open_rate = (int(total_opens) / email_sent * 100) if email_sent > 0 else 0
-        ctr = (int(total_clicks) / email_sent * 100) if email_sent > 0 else 0
-
-        results.append({
-            "id": str(article.id),
-            "title": article.title,
-            "slug": article.slug,
-            "status": article.status,
-            "published_at": article.published_at.isoformat() if article.published_at else None,
-            "total_views": total_views,
-            "unique_views_24h": unique_views_24h,
-            "email_sent": email_sent,
-            "email_opens": int(total_opens),
-            "email_clicks": int(total_clicks),
-            "email_open_rate": round(open_rate, 2),
-            "email_ctr": round(ctr, 2),
-        })
-
-    return results
+    return get_articles_metrics_batch(session, articles)

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import JSON, Column, Text
@@ -18,7 +18,7 @@ class Article(SQLModel, table=True):
     published_at: Optional[datetime] = Field(default=None)
     scheduled_for: Optional[datetime] = Field(default=None, nullable=True)
     search_text: Optional[str] = Field(default=None, sa_column=Column(Text))
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 
     tags: List["Tag"] = Relationship(back_populates="articles", link_model=ArticleTag)

@@ -107,8 +107,8 @@ class TestOAuthCallback:
                 assert "/admin/verify-email" in response.headers["location"]
 
     def test_callback_links_existing_user(self, client: TestClient, session: Session, monkeypatch):
-        """OAuth callback for existing email should link accounts and redirect with JWT."""
-        from unittest.mock import patch
+        """OAuth callback for existing email should link accounts and redirect with one-time code."""
+        from unittest.mock import patch, AsyncMock
         from app.routers import oauth as oauth_router
 
         # Populate state store
@@ -116,6 +116,12 @@ class TestOAuthCallback:
 
         # Admin user already exists from fixture
         admin = session.exec(select(User)).first()
+
+        # Mock Redis to avoid needing a real Redis instance in tests
+        mock_redis = AsyncMock()
+        mock_redis.setex = AsyncMock()
+        mock_redis.aclose = AsyncMock()
+        monkeypatch.setattr(oauth_router, "_get_redis", lambda: mock_redis)
 
         with patch.object(oauth_router.OAuthHandler, "_exchange_code", return_value={"access_token": "fake-token"}):
             with patch.object(oauth_router.OAuthHandler, "_fetch_userinfo", return_value={
@@ -129,9 +135,9 @@ class TestOAuthCallback:
                     params={"code": "fake-code", "state": "test-state"},
                     follow_redirects=False,
                 )
-                # Should redirect to /admin/login with oauth_token
+                # Should redirect to /admin/login with oauth_code (not oauth_token)
                 assert response.status_code == 302
-                assert "/admin/login?oauth_token=" in response.headers["location"]
+                assert "/admin/login?oauth_code=" in response.headers["location"]
 
                 # Verify OAuth provider was linked
                 providers = session.exec(
