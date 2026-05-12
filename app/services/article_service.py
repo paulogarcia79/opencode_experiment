@@ -121,3 +121,40 @@ def delete_article(session: Session, article: Article) -> None:
 
     session.delete(article)
     session.commit()
+
+def reassign_article(
+    session: Session,
+    article: Article,
+    new_author_id: uuid.UUID,
+) -> Article:
+    """Reassign an article to a new author and create a revision."""
+    from app.models.user import User
+    from app.services.revision_service import create_revision
+
+    old_author_id = article.author_id
+
+    new_author = session.get(User, new_author_id)
+    if not new_author:
+        raise ValueError("Target user not found")
+
+    if not new_author.is_active:
+        raise ValueError("Target user is inactive")
+
+    article.author_id = new_author_id
+    session.add(article)
+    session.commit()
+    session.refresh(article)
+
+    # Create revision with reassign metadata
+    revision = create_revision(session, article, "reassign")
+    revision.reassign_metadata = {
+        "old_author_id": str(old_author_id) if old_author_id else None,
+        "new_author_id": str(new_author_id),
+    }
+    session.add(revision)
+    session.commit()
+    session.refresh(revision)
+
+    return session.exec(
+        select(Article).where(Article.id == article.id).options(selectinload(Article.tags), selectinload(Article.author))
+    ).first()

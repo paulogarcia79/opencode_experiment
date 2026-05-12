@@ -1,6 +1,7 @@
 from datetime import timezone
 from typing import Optional
 from uuid import UUID
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, Response, UploadFile, File
 from sqlmodel import Session, select, func
 from starlette.requests import Request
@@ -8,7 +9,7 @@ from app.database import get_session
 from app.dependencies import require_role, get_arq_pool
 from arq.connections import ArqRedis
 from app.models import Article, NewsletterSend, Tag, ArticleTag, ArticleRevision
-from app.schemas import ArticleCreate, ArticleUpdate, ArticleAutoSave, TagRead, RevisionListRead, RevisionRead, ImportResult
+from app.schemas import ArticleCreate, ArticleUpdate, ArticleAutoSave, TagRead, RevisionListRead, RevisionRead, ImportResult, ArticleReassignRequest
 from app.services.article_service import (
     create_article,
     get_article_by_slug,
@@ -16,6 +17,7 @@ from app.services.article_service import (
     list_all_articles,
     update_article,
     delete_article,
+    reassign_article,
 )
 from app.services.permission_service import check_article_permission
 from app.services.revision_service import (
@@ -488,6 +490,35 @@ def restore_article_revision_endpoint(article_id: UUID, version_number: int, ses
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
     response = restored.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in restored.tags]
+    return response
+
+@router.put("/api/admin/articles/{article_id}/reassign", dependencies=[Depends(require_role(["admin", "editor"]))])
+def reassign_article_endpoint(
+    article_id: UUID,
+    data: ArticleReassignRequest,
+    user=Depends(require_role(["admin", "editor"])),
+    session: Session = Depends(get_session),
+):
+    article = session.get(Article, article_id)
+    if not article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+
+    try:
+        new_author_id = uuid.UUID(data.author_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid author_id format")
+
+    try:
+        updated = reassign_article(session, article, new_author_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    response = updated.model_dump()
+    response["tags"] = [TagRead.model_validate(t).model_dump() for t in updated.tags]
+    if updated.author:
+        response["author"] = {"id": str(updated.author.id), "email": updated.author.email}
+    else:
+        response["author"] = None
     return response
 
 @router.get("/api/admin/newsletter-blasts/{article_id}/status", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])

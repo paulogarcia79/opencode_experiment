@@ -1,6 +1,6 @@
 PERMISSIONS = {
-    "admin": {"create", "edit_own", "edit_others", "delete", "publish"},
-    "editor": {"create", "edit_own", "edit_others", "delete", "publish"},
+    "admin": {"create", "edit_own", "edit_others", "delete", "publish", "reassign"},
+    "editor": {"create", "edit_own", "edit_others", "delete", "publish", "reassign"},
     "contributor": {"create", "edit_own"},
 }
 

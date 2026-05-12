@@ -14,7 +14,8 @@ class ArticleRevision(SQLModel, table=True):
     content: dict = Field(default_factory=dict, sa_column=Column(JSON))
     description: str | None = Field(default=None, sa_column=Column(Text))
     tag_names: list = Field(default_factory=list, sa_column=Column(JSON))
-    change_type: str = Field(nullable=False)  # "save", "publish", "restore"
+    change_type: str = Field(nullable=False)  # "save", "publish", "restore", "reassign"
+    reassign_metadata: Optional[dict] = Field(default_factory=dict, sa_column=Column("metadata", JSON))
     author_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id", nullable=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 

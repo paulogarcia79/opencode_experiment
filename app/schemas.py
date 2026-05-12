@@ -142,3 +142,6 @@ class ActiveUpdateRequest(BaseModel):
 class SetupRequest(BaseModel):
     token: str
     password: str
+
+class ArticleReassignRequest(BaseModel):
+    author_id: str
