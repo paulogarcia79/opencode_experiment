@@ -233,6 +233,7 @@
         </RouterLink>
 
         <!-- Auto-save status -->
+        <template v-if="!isReadOnly">
         <span
           v-if="autosaveStatus === 'saving'"
           class="text-xs text-slate-500 animate-pulse"
@@ -270,6 +271,7 @@
         >
           Add a title to enable auto-save
         </span>
+        </template>
       </div>
 
       <!-- Status Messages -->
@@ -316,6 +318,7 @@ import TagInput from '@/components/TagInput.vue'
 import RevisionPanel from '@/components/RevisionPanel.vue'
 import { createArticle, updateArticle, fetchAdminArticle, sendPreviewEmail, fetchUsers, reassignArticle } from '@/composables/useAdminApi'
 import { useAutoSave } from '@/composables/useAutoSave'
+import { useConfirm } from '@/composables/useConfirm'
 import { useAdminStore } from '@/stores/admin'
 import type { TagItem } from '@/components/TagInput.vue'
 import type { TipTapContent, User } from '@/types'
@@ -323,6 +326,7 @@ import type { TipTapContent, User } from '@/types'
 const route = useRoute()
 const router = useRouter()
 const store = useAdminStore()
+const { confirm } = useConfirm()
 const isEditing = ref(false)
 const loadedArticle = ref<{ author?: { id: string } | null } | null>(null)
 
@@ -397,7 +401,7 @@ onMounted(async () => {
     try {
       activeUsers.value = await fetchUsers()
     } catch {
-      // Silently fail - reassign UI will just show empty dropdown
+      console.error('Failed to fetch users for reassign dropdown')
     }
   }
 
@@ -415,7 +419,7 @@ onMounted(async () => {
 
       // Load rejection feedback for rejected articles
       if (isContributor.value) {
-        rejectionFeedback.value = (article as any).latest_rejection_feedback || null
+        rejectionFeedback.value = article.latest_rejection_feedback || null
       }
 
       form.value.title = article.title
@@ -535,7 +539,8 @@ async function handleReassign() {
   const targetUser = activeUsers.value.find((u) => u.id === selectedAuthorId.value)
   if (!targetUser) return
 
-  if (!confirm(`Reassign this article to ${targetUser.email}?`)) return
+  const ok = await confirm('Reassign Article', `Reassign this article to ${targetUser.email}?`)
+  if (!ok) return
 
   reassigning.value = true
   reassignError.value = ''

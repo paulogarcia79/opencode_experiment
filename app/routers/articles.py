@@ -269,7 +269,7 @@ def list_admin_articles_endpoint(
 def get_articles_performance_list(session: Session = Depends(get_session)):
     from app.services.article_metrics_service import get_articles_metrics_batch
     
-    articles = session.exec(select(Article)).all()
+    articles = session.exec(select(Article).order_by(Article.created_at.desc()).limit(500)).all()
     return get_articles_metrics_batch(session, articles)
 
 
@@ -578,9 +578,10 @@ def autosave_article_endpoint(
     if data.tag_names is not None:
         update_data["tag_names"] = data.tag_names
 
-    # Auto-save always keeps the article as a draft
-    update_data["status"] = "draft"
-    update_data["published_at"] = None
+    # Auto-save only reverts draft/pending_review articles to draft; never touches published
+    if article.status in ("draft", "pending_review"):
+        update_data["status"] = "draft"
+        update_data["published_at"] = None
 
     updated = update_article(session, article, **update_data)
 
@@ -612,7 +613,7 @@ def list_tags_endpoint(q: Optional[str] = None, session: Session = Depends(get_s
         result.append(tag_data)
     return result
 
-@router.delete("/api/admin/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
+@router.delete("/api/admin/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role(["admin", "editor"]))])
 def delete_tag_endpoint(tag_id: UUID, session: Session = Depends(get_session)):
     from sqlmodel import select, func
     tag = session.get(Tag, tag_id)

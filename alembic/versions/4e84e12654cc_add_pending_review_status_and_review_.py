@@ -34,16 +34,16 @@ def upgrade() -> None:
         op.create_table('review_actions',
             sa.Column('id', sa.Uuid(), nullable=False),
             sa.Column('article_id', sa.Uuid(), nullable=False),
-            sa.Column('reviewer_id', sa.Uuid(), nullable=False),
+            sa.Column('reviewer_id', sa.Uuid(), nullable=True),
             sa.Column('action', sa.String(), nullable=False),
             sa.Column('feedback', sa.String(), nullable=True),
             sa.Column('created_at', sa.DateTime(), nullable=False),
             sa.ForeignKeyConstraint(['article_id'], ['articles.id'], ondelete='CASCADE'),
-            sa.ForeignKeyConstraint(['reviewer_id'], ['users.id'], ),
+            sa.ForeignKeyConstraint(['reviewer_id'], ['users.id'], ondelete='SET NULL'),
             sa.PrimaryKeyConstraint('id')
         )
     else:
-        # Table already exists (e.g. from SQLModel create_all) — fix FK to cascade
+        # Table already exists (e.g. from SQLModel create_all) — fix FKs
         fks = inspector.get_foreign_keys('review_actions')
         for fk in fks:
             if fk['referred_table'] == 'articles' and 'CASCADE' not in (fk.get('options', {}) or {}).get('ondelete', ''):
@@ -54,6 +54,19 @@ def upgrade() -> None:
                     ['article_id'], ['id'],
                     ondelete='CASCADE'
                 )
+            if fk['referred_table'] == 'users' and (fk.get('options', {}) or {}).get('ondelete') != 'SET NULL':
+                op.drop_constraint(fk['name'], 'review_actions', type_='foreignkey')
+                op.create_foreign_key(
+                    fk['name'],
+                    'review_actions', 'users',
+                    ['reviewer_id'], ['id'],
+                    ondelete='SET NULL'
+                )
+        # Make reviewer_id nullable if it isn't already
+        columns = [c['name'] for c in inspector.get_columns('review_actions')]
+        col_info = next((c for c in inspector.get_columns('review_actions') if c['name'] == 'reviewer_id'), None)
+        if col_info and col_info['nullable'] is False:
+            op.alter_column('review_actions', 'reviewer_id', nullable=True)
 
 
 def downgrade() -> None:

@@ -112,6 +112,7 @@ def delete_article(session: Session, article: Article) -> None:
     from app.models.article_revision import ArticleRevision
     from app.models.article_view import ArticleView
     from app.models.newsletter_send import NewsletterSend
+    from app.models.review_action import ReviewAction
 
     # Delete related records first (for existing DBs without CASCADE)
     for rev in session.exec(select(ArticleRevision).where(ArticleRevision.article_id == article.id)):
@@ -120,6 +121,8 @@ def delete_article(session: Session, article: Article) -> None:
         session.delete(view)
     for send in session.exec(select(NewsletterSend).where(NewsletterSend.article_id == article.id)):
         session.delete(send)
+    for ra in session.exec(select(ReviewAction).where(ReviewAction.article_id == article.id)):
+        session.delete(ra)
 
     session.delete(article)
     session.commit()

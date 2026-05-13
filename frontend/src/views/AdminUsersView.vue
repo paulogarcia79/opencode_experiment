@@ -249,7 +249,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { fetchUsers, inviteUser, updateUserRole, toggleUserActive } from '@/composables/useAdminApi'
+import { useConfirm } from '@/composables/useConfirm'
 import type { User } from '@/types'
+
+const { confirm } = useConfirm()
 
 const users = ref<User[]>([])
 const loading = ref(true)
@@ -318,7 +321,7 @@ async function handleRoleChange(userId: string, newRole: string) {
 }
 
 async function handleToggleActive(user: User) {
-  if (user.is_active && !confirm(`Deactivate ${user.email}?`)) return
+  if (user.is_active && !(await confirm('Deactivate User', `Deactivate ${user.email}?`, 'warning'))) return
 
   activeLoadingId.value = user.id
   error.value = ''

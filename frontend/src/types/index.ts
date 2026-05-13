@@ -33,12 +33,28 @@ export interface Article {
   status: string
   send_newsletter: boolean
   published_at: string | null
+  submitted_at: string | null
   scheduled_for: string | null
   search_text: string | null
+  author_id: string | null
   created_at: string
   updated_at: string
   author: ArticleAuthor | null
   tags: Tag[]
+  has_been_rejected?: boolean
+  latest_rejection_feedback?: string | null
+}
+
+export interface ArticleWithPerformance extends Article {
+  total_views?: number
+  unique_views_24h?: number
+  email_sent?: number
+  email_opens?: number
+  email_clicks?: number
+  email_open_rate?: number
+  email_ctr?: number
+  _canEdit?: boolean
+  _canDelete?: boolean
 }
 
 export interface ArticlePerformance {

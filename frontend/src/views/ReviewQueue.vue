@@ -103,7 +103,8 @@
         <div class="flex items-center gap-3 justify-end">
           <button
             @click="approveTarget = null"
-            class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer"
+            :disabled="actionLoading"
+            class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
@@ -133,7 +134,8 @@
         <div class="flex items-center gap-3 justify-end">
           <button
             @click="rejectTarget = null"
-            class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer"
+            :disabled="actionLoading"
+            class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
@@ -155,10 +157,17 @@
 import { ref, computed, onMounted, inject } from 'vue'
 import { useAdminStore } from '@/stores/admin'
 import ExpandableTable from '@/components/ExpandableTable.vue'
+import type { Article } from '@/types'
+import { useToast } from '@/composables/useToast'
+
+interface ReviewQueueArticle extends Article {
+  previous_feedback?: string | null
+}
 
 const store = useAdminStore()
 
 const refreshReviewCount = inject<() => void>('refreshReviewCount', () => {})
+const { show: showToast } = useToast()
 
 const namespace = computed(() => {
   const role = store.user?.role
@@ -172,14 +181,14 @@ const columns = [
   { key: 'submitted', label: 'Submitted' },
 ]
 
-const articles = ref<any[]>([])
+const articles = ref<ReviewQueueArticle[]>([])
 const loading = ref(true)
 const error = ref('')
 const expandedIds = ref<string[]>([])
 const actionLoading = ref(false)
 
-const approveTarget = ref<any>(null)
-const rejectTarget = ref<any>(null)
+const approveTarget = ref<ReviewQueueArticle | null>(null)
+const rejectTarget = ref<ReviewQueueArticle | null>(null)
 const rejectFeedback = ref('')
 
 function formatDate(dateStr: string): string {
@@ -208,7 +217,7 @@ async function fetchReviewQueue() {
     const data = await res.json()
 
     // Fetch rejection feedback for each article
-    articles.value = data.map((a: any) => ({
+    articles.value = data.map((a: ReviewQueueArticle) => ({
       ...a,
       previous_feedback: a.latest_rejection_feedback || null,
     }))
@@ -219,7 +228,7 @@ async function fetchReviewQueue() {
   }
 }
 
-function openApproveDialog(row: any) {
+function openApproveDialog(row: ReviewQueueArticle) {
   approveTarget.value = row
 }
 
@@ -236,17 +245,17 @@ async function confirmApprove() {
       },
     })
     if (!res.ok) throw new Error(`Failed to approve (${res.status})`)
-    articles.value = articles.value.filter((a) => a.id !== approveTarget.value.id)
+    articles.value = articles.value.filter((a) => a.id !== approveTarget.value!.id)
     approveTarget.value = null
     refreshReviewCount()
   } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : 'Failed to approve')
+    showToast(e instanceof Error ? e.message : 'Failed to approve', 'error')
   } finally {
     actionLoading.value = false
   }
 }
 
-function openRejectModal(row: any) {
+function openRejectModal(row: ReviewQueueArticle) {
   rejectTarget.value = row
   rejectFeedback.value = ''
 }
@@ -265,11 +274,11 @@ async function confirmReject() {
       body: JSON.stringify({ feedback: rejectFeedback.value }),
     })
     if (!res.ok) throw new Error(`Failed to reject (${res.status})`)
-    articles.value = articles.value.filter((a) => a.id !== rejectTarget.value.id)
+    articles.value = articles.value.filter((a) => a.id !== rejectTarget.value!.id)
     rejectTarget.value = null
     refreshReviewCount()
   } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : 'Failed to reject')
+    showToast(e instanceof Error ? e.message : 'Failed to reject', 'error')
   } finally {
     actionLoading.value = false
   }

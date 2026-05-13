@@ -1,5 +1,6 @@
 <template>
   <div class="min-h-screen bg-surface-950">
+    <ConfirmDialog />
     <!-- Navigation -->
     <nav class="border-b border-white/5 bg-surface-950/80 backdrop-blur-md sticky top-0 z-50">
       <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -53,6 +54,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminStore } from '@/stores/admin'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const props = withDefaults(defineProps<{
   homeRoute?: string

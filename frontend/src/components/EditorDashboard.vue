@@ -58,7 +58,7 @@ async function fetchPendingCount() {
       pendingCount.value = data.pending_count ?? 0
     }
   } catch {
-    // silently ignore
+    console.error('Failed to fetch review count')
   }
 }
 

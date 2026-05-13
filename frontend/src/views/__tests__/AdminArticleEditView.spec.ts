@@ -31,6 +31,15 @@ vi.mock('@/composables/useAutoSave', () => ({
   }),
 }))
 
+vi.mock('@/composables/useConfirm', () => ({
+  useConfirm: vi.fn().mockReturnValue({
+    confirm: vi.fn().mockResolvedValue(true),
+    state: ref({ visible: false, title: '', message: '', confirmText: 'Confirm', cancelText: 'Cancel', variant: 'default' as const, loading: false }),
+    onConfirm: vi.fn(),
+    onCancel: vi.fn(),
+  }),
+}))
+
 import { fetchAdminArticle, createArticle, updateArticle, sendPreviewEmail, fetchUsers, reassignArticle } from '@/composables/useAdminApi'
 import { useAutoSave } from '@/composables/useAutoSave'
 import { useAdminStore } from '@/stores/admin'
@@ -88,6 +97,8 @@ describe('AdminArticleEditView', () => {
       published_at: null,
       scheduled_for: null,
       search_text: null,
+      submitted_at: null,
+      author_id: 'user-1',
       created_at: '2025-01-15T00:00:00Z',
       updated_at: '2025-01-15T00:00:00Z',
       author: { id: 'user-1', email: 'admin@example.com' },
@@ -115,6 +126,8 @@ describe('AdminArticleEditView', () => {
       published_at: null,
       scheduled_for: null,
       search_text: null,
+      submitted_at: null,
+      author_id: 'user-1',
       created_at: '2025-01-15T00:00:00Z',
       updated_at: '2025-01-15T00:00:00Z',
       author: { id: 'user-1', email: 'admin@example.com' },
@@ -149,6 +162,8 @@ describe('AdminArticleEditView', () => {
       published_at: null,
       scheduled_for: null,
       search_text: null,
+      submitted_at: null,
+      author_id: 'user-1',
       created_at: '2025-01-15T00:00:00Z',
       updated_at: '2025-01-15T00:00:00Z',
       author: { id: 'user-1', email: 'admin@example.com' },
@@ -165,6 +180,8 @@ describe('AdminArticleEditView', () => {
       published_at: null,
       scheduled_for: null,
       search_text: null,
+      submitted_at: null,
+      author_id: 'user-1',
       created_at: '2025-01-15T00:00:00Z',
       updated_at: '2025-01-15T00:00:00Z',
       author: { id: 'user-1', email: 'admin@example.com' },
@@ -229,6 +246,8 @@ describe('AdminArticleEditView', () => {
       published_at: null,
       scheduled_for: null,
       search_text: null,
+      submitted_at: null,
+      author_id: 'user-1',
       created_at: '2025-01-15T00:00:00Z',
       updated_at: '2025-01-15T00:00:00Z',
       author: { id: 'user-1', email: 'admin@example.com' },
@@ -266,6 +285,8 @@ describe('AdminArticleEditView', () => {
       published_at: null,
       scheduled_for: null,
       search_text: null,
+      submitted_at: null,
+      author_id: 'user-1',
       created_at: '2025-01-15T00:00:00Z',
       updated_at: '2025-01-15T00:00:00Z',
       author: { id: 'user-1', email: 'admin@example.com' },
@@ -300,6 +321,8 @@ describe('AdminArticleEditView', () => {
       published_at: null,
       scheduled_for: null,
       search_text: null,
+      submitted_at: null,
+      author_id: 'user-1',
       created_at: '2025-01-15T00:00:00Z',
       updated_at: '2025-01-15T00:00:00Z',
       author: { id: 'user-1', email: 'admin@example.com' },
@@ -342,6 +365,8 @@ describe('AdminArticleEditView', () => {
       published_at: null,
       scheduled_for: null,
       search_text: null,
+      submitted_at: null,
+      author_id: 'user-1',
       created_at: '2025-01-15T00:00:00Z',
       updated_at: '2025-01-15T00:00:00Z',
       author: { id: 'user-1', email: 'editor@example.com' },
@@ -369,6 +394,8 @@ describe('AdminArticleEditView', () => {
       published_at: null,
       scheduled_for: null,
       search_text: null,
+      submitted_at: null,
+      author_id: 'user-1',
       created_at: '2025-01-15T00:00:00Z',
       updated_at: '2025-01-15T00:00:00Z',
       author: { id: 'user-1', email: 'admin@example.com' },
@@ -378,7 +405,56 @@ describe('AdminArticleEditView', () => {
       { id: 'user-2', email: 'editor@example.com', role: 'editor', is_active: true, is_verified: true, created_at: '2025-01-01T00:00:00Z' },
     ])
     vi.mocked(reassignArticle).mockResolvedValue({ message: 'Article reassigned' })
-    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true))
+
+    const wrapper = mount(AdminArticleEditView, {
+      global: { components: { RouterLink, TipTapEditor, TagInput } },
+    })
+    await flushPromises()
+
+    await wrapper.find('select').setValue('user-2')
+    await flushPromises()
+    const reassignBtn = wrapper.findAll('button').find(b => b.text().includes('Reassign'))
+    await reassignBtn?.trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    expect(reassignArticle).toHaveBeenCalledWith('123', 'user-2')
+    expect(wrapper.text()).toContain('Article reassigned')
+  })
+
+  it('shows error when reassign fails', async () => {
+    const store = useAdminStore()
+    store.setUser({
+      id: 'user-1',
+      email: 'admin@example.com',
+      role: 'admin',
+      is_active: true,
+      is_verified: true,
+      created_at: '2025-01-01T00:00:00Z',
+    })
+    mockParams.id = '123'
+    vi.mocked(fetchAdminArticle).mockResolvedValue({
+      id: '123',
+      title: 'Existing',
+      slug: 'existing',
+      description: '',
+      content: { type: 'doc', content: [] },
+      status: 'draft',
+      send_newsletter: true,
+      published_at: null,
+      scheduled_for: null,
+      search_text: null,
+      submitted_at: null,
+      author_id: 'user-1',
+      created_at: '2025-01-15T00:00:00Z',
+      updated_at: '2025-01-15T00:00:00Z',
+      author: { id: 'user-1', email: 'admin@example.com' },
+      tags: [],
+    })
+    vi.mocked(fetchUsers).mockResolvedValue([
+      { id: 'user-2', email: 'inactive@example.com', role: 'contributor', is_active: false, is_verified: true, created_at: '2025-01-01T00:00:00Z' },
+    ])
+    vi.mocked(reassignArticle).mockRejectedValue(new Error('Target user is inactive'))
 
     const wrapper = mount(AdminArticleEditView, {
       global: { components: { RouterLink, TipTapEditor, TagInput } },
@@ -393,7 +469,7 @@ describe('AdminArticleEditView', () => {
     await flushPromises()
 
     expect(reassignArticle).toHaveBeenCalledWith('123', 'user-2')
-    expect(wrapper.text()).toContain('Article reassigned to editor@example.com')
+    expect(wrapper.text()).toContain('Target user is inactive')
   })
 
   it('shows error when reassign fails', async () => {
@@ -409,6 +485,8 @@ describe('AdminArticleEditView', () => {
       published_at: null,
       scheduled_for: null,
       search_text: null,
+      submitted_at: null,
+      author_id: 'user-1',
       created_at: '2025-01-15T00:00:00Z',
       updated_at: '2025-01-15T00:00:00Z',
       author: { id: 'user-1', email: 'admin@example.com' },

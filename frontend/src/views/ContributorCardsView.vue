@@ -121,7 +121,7 @@
             <span
               v-if="article.has_been_rejected"
               class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-500/10 text-accent-400 text-xs font-medium border border-accent-500/20"
-              :title="article.latest_rejection_feedback"
+              :title="article.latest_rejection_feedback ?? undefined"
             >
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -189,14 +189,19 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore } from '@/stores/admin'
+import type { ArticleWithPerformance } from '@/types'
+import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
 const store = useAdminStore()
+const { confirm } = useConfirm()
+const { show: showToast } = useToast()
 
 const PAGE_SIZE = 20
 
-const articles = ref<any[]>([])
+const articles = ref<ArticleWithPerformance[]>([])
 const loading = ref(true)
 const loadingMore = ref(false)
 const error = ref('')
@@ -290,7 +295,8 @@ function onSearch() {
 }
 
 async function handleDelete(articleId: string) {
-  if (!confirm('Are you sure you want to delete this article?')) return
+  const ok = await confirm('Delete Article', 'Are you sure you want to delete this article?', 'danger')
+  if (!ok) return
   try {
     const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
     const res = await fetch(`${API_BASE}/api/articles/${articleId}`, {
@@ -302,7 +308,7 @@ async function handleDelete(articleId: string) {
     }
     articles.value = articles.value.filter((a) => a.id !== articleId)
   } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : 'Failed to delete article')
+    showToast(e instanceof Error ? e.message : 'Failed to delete article', 'error')
   }
 }
 

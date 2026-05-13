@@ -60,7 +60,7 @@
     <template v-else>
       <ExpandableTable
         :columns="tableColumns"
-        :rows="(articlesWithPerformance as any)"
+        :rows="articlesWithPerformance"
         :expanded-ids="expandedIds"
         :sort-column="sortColumn"
         :sort-order="sortOrder"
@@ -172,10 +172,14 @@ import { useRoute, useRouter } from 'vue-router'
 import ExpandableTable from '@/components/ExpandableTable.vue'
 import { useAdminStore } from '@/stores/admin'
 import type { ArticleWithPerformance } from '@/types'
+import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
 const store = useAdminStore()
+const { confirm } = useConfirm()
+const { show: showToast } = useToast()
 
 const namespace = computed(() => {
   const role = store.user?.role
@@ -228,10 +232,13 @@ function canEditArticle(article: ArticleWithPerformance): boolean {
   return allowed.includes('edit_others')
 }
 
-function canDeleteArticle(_article: ArticleWithPerformance): boolean {
+function canDeleteArticle(article: ArticleWithPerformance): boolean {
   const user = store.user
   if (!user) return false
-  return user.role === 'admin' || user.role === 'editor' || user.role === 'contributor'
+  if (user.role === 'contributor') {
+    return article.author?.id === user.id
+  }
+  return user.role === 'admin' || user.role === 'editor'
 }
 
 const articlesWithPerformance = computed(() =>
@@ -318,7 +325,8 @@ function handleCollapse(id: string) {
 }
 
 async function handleDelete(articleId: string) {
-  if (!confirm('Are you sure you want to delete this article?')) return
+  const ok = await confirm('Delete Article', 'Are you sure you want to delete this article?', 'danger')
+  if (!ok) return
   try {
     const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
     const res = await fetch(`${API_BASE}/api/articles/${articleId}`, {
@@ -330,7 +338,7 @@ async function handleDelete(articleId: string) {
     }
     articles.value = articles.value.filter((a) => a.id !== articleId)
   } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : 'Failed to delete article')
+    showToast(e instanceof Error ? e.message : 'Failed to delete article', 'error')
   }
 }
 

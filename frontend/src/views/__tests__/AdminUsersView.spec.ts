@@ -9,6 +9,14 @@ vi.mock('@/composables/useAdminApi', () => ({
   toggleUserActive: vi.fn(),
 }))
 
+const mockConfirm = vi.fn().mockResolvedValue(true)
+vi.mock('@/composables/useConfirm', () => ({
+  useConfirm: () => ({
+    confirm: mockConfirm,
+    state: { value: { visible: false } },
+  }),
+}))
+
 import { fetchUsers, inviteUser, updateUserRole, toggleUserActive } from '@/composables/useAdminApi'
 
 import type { User } from '@/types'
@@ -171,9 +179,9 @@ describe('AdminUsersView', () => {
   })
 
   it('shows confirmation before deactivating user', async () => {
+    mockConfirm.mockResolvedValueOnce(false)
     vi.mocked(fetchUsers).mockResolvedValue(mockUsers)
     vi.mocked(toggleUserActive).mockResolvedValue({ message: 'User deactivated' })
-    vi.mocked(globalThis.confirm).mockReturnValue(false)
 
     const wrapper = mount(AdminUsersView)
     await flushPromises()

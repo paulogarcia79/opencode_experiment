@@ -8,7 +8,7 @@ class ReviewAction(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     article_id: uuid.UUID = Field(foreign_key="articles.id", nullable=False, ondelete="CASCADE")
-    reviewer_id: uuid.UUID = Field(foreign_key="users.id", nullable=False)
+    reviewer_id: uuid.UUID = Field(default=None, foreign_key="users.id", nullable=True, ondelete="SET NULL")
     action: str = Field(nullable=False)  # "approved" or "rejected"
     feedback: Optional[str] = Field(default=None, nullable=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
