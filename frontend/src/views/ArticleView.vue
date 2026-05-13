@@ -94,7 +94,7 @@
       </div>
 
       <!-- Newsletter Section -->
-      <footer class="mt-16 pt-12 border-t border-white/5">
+      <footer v-if="!store.token" class="mt-16 pt-12 border-t border-white/5">
         <div class="rounded-xl border border-white/5 bg-white/[0.02] p-8">
           <NewsletterForm />
         </div>
@@ -126,6 +126,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAdminStore } from '@/stores/admin'
 import { fetchArticle } from '@/composables/useApi'
 import { useHead } from '@/composables/useHead'
 import { estimateReadingTime, formatReadingTime } from '@/composables/useReadingTime'
@@ -135,6 +136,7 @@ import ShareButtons from '@/components/ShareButtons.vue'
 import type { Article } from '@/types'
 
 const route = useRoute()
+const store = useAdminStore()
 const article = ref<Article | null>(null)
 const loading = ref(true)
 const error = ref('')

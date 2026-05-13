@@ -8,6 +8,10 @@ vi.mock('vue-router', () => ({
   useRoute: () => ({ params: mockParams }),
 }))
 
+vi.mock('@/stores/admin', () => ({
+  useAdminStore: () => ({ token: '' }),
+}))
+
 const RouterLink = {
   template: '<a :href="to"><slot /></a>',
   props: ['to'],
