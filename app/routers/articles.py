@@ -2,11 +2,10 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Response, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response, UploadFile, File, Request
 from sqlmodel import Session, select, func
-from starlette.requests import Request
 from app.database import get_session
-from app.dependencies import require_role, get_arq_pool
+from app.dependencies import require_role, require_role_allow_unverified, get_arq_pool, _decode_and_validate_user
 from arq.connections import ArqRedis
 from app.models import Article, NewsletterSend, Tag, ArticleTag, ArticleRevision, ReviewAction
 from app.schemas import ArticleCreate, ArticleUpdate, ArticleAutoSave, TagRead, RevisionListRead, RevisionRead, ImportResult, ArticleReassignRequest, ReviewRejectRequest
@@ -69,7 +68,22 @@ def search_articles_endpoint(request: Request, q: Optional[str] = None, session:
 @limiter.limit(settings.RATE_LIMIT_ARTICLE_VIEW)
 def get_article_endpoint(request: Request, slug: str, session: Session = Depends(get_session)):
     article = get_article_by_slug(session, slug)
-    if not article or article.status != "published":
+    if not article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+
+    # Allow admin/editor to view non-published articles
+    can_view_non_published = False
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        try:
+            token = auth[7:]
+            user = _decode_and_validate_user(token, session)
+            if user.role in ("admin", "editor"):
+                can_view_non_published = True
+        except HTTPException:
+            pass
+
+    if article.status != "published" and not can_view_non_published:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
     client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1").split(",")[0].strip()
     record_view(session, article.id, client_ip)

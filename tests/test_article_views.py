@@ -214,3 +214,22 @@ class TestArticlesPerformanceList:
 
         response = client.get("/api/admin/articles/performance")
         assert response.status_code == 401
+
+
+class TestNonPublishedArticleAccess:
+    def test_non_published_returns_404_for_public(self, client: TestClient, session: Session):
+        article = create_article(session, "Secret Draft", {"type": "doc"})
+        response = client.get(f"/api/articles/{article.slug}")
+        assert response.status_code == 404
+
+    def test_non_published_allowed_for_editor(self, client: TestClient, session: Session):
+        from tests.conftest import create_user_token
+        article = create_article(session, "Editor Sees Draft", {"type": "doc"})
+        editor_headers = create_user_token(session, "editor-sees@test.com", "editor")
+        response = client.get(f"/api/articles/{article.slug}", headers=editor_headers)
+        assert response.status_code == 200
+
+    def test_non_published_allowed_for_admin(self, client: TestClient, session: Session, admin_token):
+        article = create_article(session, "Admin Sees Draft", {"type": "doc"})
+        response = client.get(f"/api/articles/{article.slug}", headers=admin_token)
+        assert response.status_code == 200
