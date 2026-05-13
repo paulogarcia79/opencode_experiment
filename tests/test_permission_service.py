@@ -54,9 +54,14 @@ class TestCheckArticlePermission:
         article = _FakeArticle(author_id="someone-else")
         assert check_article_permission(user, article, "edit_others") is True
 
-    def test_contributor_cannot_delete(self):
-        user = _FakeUser(role="contributor")
-        article = _FakeArticle(author_id="contributor")
+    def test_contributor_can_delete_own(self):
+        user = _FakeUser(role="contributor", user_id="contributor-1")
+        article = _FakeArticle(author_id="contributor-1")
+        assert check_article_permission(user, article, "delete") is True
+
+    def test_contributor_cannot_delete_others(self):
+        user = _FakeUser(role="contributor", user_id="contributor-1")
+        article = _FakeArticle(author_id="someone-else")
         assert check_article_permission(user, article, "delete") is False
 
     def test_editor_can_delete(self):

@@ -29,8 +29,8 @@ class ArticleUpdate(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v not in ("draft", "published", "scheduled"):
-            raise ValueError("Status must be one of: draft, published, scheduled")
+        if v is not None and v not in ("draft", "published", "scheduled", "pending_review"):
+            raise ValueError("Status must be one of: draft, published, scheduled, pending_review")
         return v
 
     @field_validator("tag_names")
@@ -52,6 +52,10 @@ class ArticleAutoSave(BaseModel):
         if v is not None and len(v) > 8:
             raise ValueError("Maximum 8 tags allowed")
         return v
+
+
+class ReviewRejectRequest(BaseModel):
+    feedback: str
 
 class SubscribeRequest(BaseModel):
     email: str

@@ -133,6 +133,15 @@ const router = useRouter()
 const route = useRoute()
 const store = useAdminStore()
 
+function getDashboardForRole(role: string | undefined): string {
+  const dashboards: Record<string, string> = {
+    admin: '/admin',
+    editor: '/editor',
+    contributor: '/contributor',
+  }
+  return dashboards[role ?? ''] || '/admin'
+}
+
 onMounted(async () => {
   const oauthCode = route.query.oauth_code as string
   if (oauthCode) {
@@ -140,7 +149,8 @@ onMounted(async () => {
       const data = await exchangeOAuthCode(oauthCode)
       store.setToken(data.token)
       await store.fetchMe()
-      router.replace('/admin')
+      const dashboard = getDashboardForRole(store.user?.role)
+      router.replace(dashboard)
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : 'OAuth login failed'
     }
@@ -156,8 +166,8 @@ async function handleLogin() {
   try {
     const data = await login(email.value, password.value)
     store.setToken(data.token)
-    await store.fetchMe()
-    router.push('/admin')
+      await store.fetchMe()
+      router.push(getDashboardForRole(store.user?.role))
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Something went wrong'
   } finally {

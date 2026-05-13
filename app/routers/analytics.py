@@ -10,7 +10,7 @@ from uuid import UUID
 
 router = APIRouter(prefix="/api/admin/analytics", tags=["analytics"])
 
-@router.get("", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
+@router.get("", dependencies=[Depends(require_role(["admin"]))])
 def get_analytics(
     range: str = Query("30d", pattern="^(7d|30d|90d)$"),
     session: Session = Depends(get_session)
@@ -153,7 +153,7 @@ def get_analytics(
 
 article_analytics_router = APIRouter(prefix="/api/admin/articles/{article_id}/analytics", tags=["article-analytics"])
 
-@article_analytics_router.get("", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
+@article_analytics_router.get("", dependencies=[Depends(require_role(["admin"]))])
 def get_article_analytics(article_id: UUID, session: Session = Depends(get_session)):
     article = session.get(Article, article_id)
     if not article:
@@ -198,7 +198,7 @@ def get_article_analytics(article_id: UUID, session: Session = Depends(get_sessi
         "email_ctr": round(ctr, 2),
     }
 
-@article_analytics_router.get("/performance", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
+@article_analytics_router.get("/performance", dependencies=[Depends(require_role(["admin"]))])
 def get_articles_performance_list(session: Session = Depends(get_session)):
     from app.services.article_metrics_service import get_articles_metrics_batch
     

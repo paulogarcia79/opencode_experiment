@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
-from sqlmodel import SQLModel, Field
+from typing import Optional, List
+from sqlmodel import SQLModel, Field, Relationship
 
 class User(SQLModel, table=True):
     __tablename__ = "users"
@@ -15,7 +15,11 @@ class User(SQLModel, table=True):
     token_version: int = Field(default=0, nullable=False)
     reset_token_hash: Optional[str] = Field(default=None, nullable=True)
     reset_token_expires_at: Optional[datetime] = Field(default=None, nullable=True)
+    setup_token_hash: Optional[str] = Field(default=None, nullable=True)
+    setup_token_expires_at: Optional[datetime] = Field(default=None, nullable=True)
     verification_token_hash: Optional[str] = Field(default=None, nullable=True)
     verification_token_expires_at: Optional[datetime] = Field(default=None, nullable=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+
+    articles: List["Article"] = Relationship(back_populates="author")

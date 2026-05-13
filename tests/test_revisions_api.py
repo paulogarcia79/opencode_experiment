@@ -249,3 +249,109 @@ def test_restore_clears_tags_when_revision_has_none(client: TestClient, session,
     assert response.status_code == 200
     data = response.json()
     assert data["tags"] == []
+
+def test_save_revision_captures_author_id(client: TestClient, session, admin_token):
+    """Explicit save should capture the current user's ID in the revision."""
+    from app.models.user import User
+    from sqlmodel import select
+    from app.models.article_revision import ArticleRevision
+    
+    admin = session.exec(select(User)).first()
+    
+    article = create_article(session, "Authored", {"type": "doc"})
+    response = client.put(
+        f"/api/articles/{article.id}",
+        json={"title": "Updated"},
+        headers=admin_token,
+    )
+    assert response.status_code == 200
+    
+    revision = session.exec(
+        select(ArticleRevision).where(ArticleRevision.article_id == article.id)
+    ).first()
+    assert revision is not None
+    assert revision.author_id == admin.id
+
+def test_publish_revision_captures_author_id(client: TestClient, session, admin_token):
+    """Publish action should capture the current user's ID in the revision."""
+    from app.models.user import User
+    from sqlmodel import select
+    from app.models.article_revision import ArticleRevision
+    
+    admin = session.exec(select(User)).first()
+    
+    article = create_article(session, "To Publish", {"type": "doc"})
+    response = client.put(
+        f"/api/articles/{article.id}",
+        json={"status": "published"},
+        headers=admin_token,
+    )
+    assert response.status_code == 200
+    
+    revision = session.exec(
+        select(ArticleRevision).where(ArticleRevision.article_id == article.id)
+    ).first()
+    assert revision is not None
+    assert revision.author_id == admin.id
+
+def test_autosave_does_not_capture_author_id(client: TestClient, session, admin_token):
+    """Autosave should not create revisions (existing behavior preserved)."""
+    from app.models.article_revision import ArticleRevision
+    from sqlmodel import select
+    
+    article = create_article(session, "Autosave Test", {"type": "doc"})
+    client.put(
+        f"/api/admin/articles/{article.id}/autosave",
+        json={"title": "Autosaved"},
+        headers=admin_token,
+    )
+    
+    revisions = session.exec(
+        select(ArticleRevision).where(ArticleRevision.article_id == article.id)
+    ).all()
+    assert len(revisions) == 0
+
+def test_revision_list_response_includes_author(client: TestClient, session, admin_token):
+    """Revision list response should include author email when present."""
+    from app.models.user import User
+    from sqlmodel import select
+    
+    admin = session.exec(select(User)).first()
+    
+    article = create_article(session, "Revision Author Test", {"type": "doc"})
+    client.put(
+        f"/api/articles/{article.id}",
+        json={"title": "Updated"},
+        headers=admin_token,
+    )
+    
+    response = client.get(
+        f"/api/admin/articles/{article.id}/revisions",
+        headers=admin_token,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["author_email"] == admin.email
+
+def test_revision_read_response_includes_author(client: TestClient, session, admin_token):
+    """Revision read response should include author email when present."""
+    from app.models.user import User
+    from sqlmodel import select
+    
+    admin = session.exec(select(User)).first()
+    
+    article = create_article(session, "Revision Read Test", {"type": "doc"})
+    client.put(
+        f"/api/articles/{article.id}",
+        json={"title": "Updated"},
+        headers=admin_token,
+    )
+    
+    response = client.get(
+        f"/api/admin/articles/{article.id}/revisions/1",
+        headers=admin_token,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["author_email"] == admin.email

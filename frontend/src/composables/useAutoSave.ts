@@ -22,6 +22,7 @@ export function useAutoSave(
   const status = ref<AutoSaveStatus>('idle')
   const error = ref<string | null>(null)
   const lastSavedAt = ref<Date | null>(null)
+  const formTouched = ref(false)
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
   let deferralTimer: ReturnType<typeof setTimeout> | null = null
@@ -172,6 +173,7 @@ export function useAutoSave(
   watch(
     () => ({ ...form.value }),
     () => {
+      if (!formTouched.value) return
       // Reset retry count on new user input
       retryCount = 0
       if (retryTimer) {
@@ -202,10 +204,15 @@ export function useAutoSave(
     doSave()
   }
 
+  function markFormTouched() {
+    formTouched.value = true
+  }
+
   return {
     status,
     error,
     lastSavedAt,
     retry,
+    markFormTouched,
   }
 }

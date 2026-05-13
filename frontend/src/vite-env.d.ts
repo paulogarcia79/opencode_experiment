@@ -7,5 +7,6 @@ declare module 'vue-router' {
     public?: boolean
     requiresAuth?: boolean
     requiresAdmin?: boolean
+    allowedRoles?: string[]
   }
 }

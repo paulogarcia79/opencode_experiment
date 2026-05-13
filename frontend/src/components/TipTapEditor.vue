@@ -145,6 +145,7 @@ import { uploadImage } from '@/composables/useImageUpload'
 
 const props = defineProps<{
   modelValue: JSONContent
+  editable?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -175,6 +176,7 @@ const editor = useEditor({
     TableHeader,
   ],
   content: props.modelValue,
+  editable: props.editable !== false,
   onUpdate: ({ editor }) => {
     emit('update:modelValue', editor.getJSON())
   },

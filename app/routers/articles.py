@@ -1,15 +1,15 @@
-from datetime import timezone
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, Response, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response, UploadFile, File
 from sqlmodel import Session, select, func
 from starlette.requests import Request
 from app.database import get_session
 from app.dependencies import require_role, get_arq_pool
 from arq.connections import ArqRedis
-from app.models import Article, NewsletterSend, Tag, ArticleTag, ArticleRevision
-from app.schemas import ArticleCreate, ArticleUpdate, ArticleAutoSave, TagRead, RevisionListRead, RevisionRead, ImportResult, ArticleReassignRequest
+from app.models import Article, NewsletterSend, Tag, ArticleTag, ArticleRevision, ReviewAction
+from app.schemas import ArticleCreate, ArticleUpdate, ArticleAutoSave, TagRead, RevisionListRead, RevisionRead, ImportResult, ArticleReassignRequest, ReviewRejectRequest
 from app.services.article_service import (
     create_article,
     get_article_by_slug,
@@ -200,18 +200,49 @@ def create_article_endpoint(
     return response
 
 @router.get("/api/admin/articles", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
-def list_admin_articles_endpoint(skip: int = 0, limit: int = 50, session: Session = Depends(get_session)):
+def list_admin_articles_endpoint(
+    skip: int = 0,
+    limit: int = 50,
+    sort: str = "created_at",
+    order: str = "desc",
+    status_filter: str = Query(default="", alias="status"),
+    user=Depends(require_role(["admin", "editor", "contributor"])),
+    session: Session = Depends(get_session),
+):
     from sqlmodel import select
     from sqlalchemy.orm import selectinload
+
+    SORT_COLUMNS = {
+        "title": Article.title,
+        "status": Article.status,
+        "published_at": Article.published_at,
+        "created_at": Article.created_at,
+        "updated_at": Article.updated_at,
+    }
+
+    if sort not in SORT_COLUMNS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid sort column: {sort}")
+    if order not in ("asc", "desc"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid order: {order}")
+
     limit = min(limit, 200)
-    articles = session.exec(
-        select(Article)
-        .order_by(Article.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .options(selectinload(Article.tags), selectinload(Article.author))
-    ).all()
-    
+
+    sort_column = SORT_COLUMNS[sort]
+    if order == "asc":
+        order_clause = sort_column.asc()
+    else:
+        order_clause = sort_column.desc()
+
+    stmt = select(Article).order_by(order_clause).offset(skip).limit(limit).options(selectinload(Article.tags), selectinload(Article.author))
+
+    if user.role == "contributor":
+        stmt = stmt.where(Article.author_id == user.id)
+
+    if status_filter:
+        stmt = stmt.where(Article.status == status_filter)
+
+    articles = session.exec(stmt).all()
+
     result = []
     for article in articles:
         article_data = article.model_dump()
@@ -220,24 +251,182 @@ def list_admin_articles_endpoint(skip: int = 0, limit: int = 50, session: Sessio
             article_data["author"] = {"id": str(article.author.id), "email": article.author.email}
         else:
             article_data["author"] = None
+
+        # Include latest rejection feedback for contributors
+        if user.role == "contributor":
+            latest_rejection = session.exec(
+                select(ReviewAction)
+                .where(ReviewAction.article_id == article.id, ReviewAction.action == "rejected")
+                .order_by(ReviewAction.created_at.desc())
+                .limit(1)
+            ).first()
+            article_data["has_been_rejected"] = latest_rejection is not None
+            article_data["latest_rejection_feedback"] = latest_rejection.feedback if latest_rejection else None
         result.append(article_data)
     return result
 
-@router.get("/api/admin/articles/performance", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
+@router.get("/api/admin/articles/performance", dependencies=[Depends(require_role(["admin"]))])
 def get_articles_performance_list(session: Session = Depends(get_session)):
     from app.services.article_metrics_service import get_articles_metrics_batch
     
     articles = session.exec(select(Article)).all()
     return get_articles_metrics_batch(session, articles)
 
+
+@router.get("/api/admin/articles/review", dependencies=[Depends(require_role(["admin", "editor"]))])
+def list_review_queue_endpoint(session: Session = Depends(get_session)):
+    from sqlalchemy.orm import selectinload
+    articles = session.exec(
+        select(Article)
+        .where(Article.status == "pending_review")
+        .order_by(Article.submitted_at.desc())
+        .options(selectinload(Article.tags), selectinload(Article.author))
+    ).all()
+    result = []
+    for article in articles:
+        article_data = article.model_dump()
+        article_data["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
+        if article.author:
+            article_data["author"] = {"id": str(article.author.id), "email": article.author.email}
+        else:
+            article_data["author"] = None
+
+        latest_rejection = session.exec(
+            select(ReviewAction)
+            .where(ReviewAction.article_id == article.id, ReviewAction.action == "rejected")
+            .order_by(ReviewAction.created_at.desc())
+            .limit(1)
+        ).first()
+        article_data["latest_rejection_feedback"] = latest_rejection.feedback if latest_rejection else None
+
+        result.append(article_data)
+    return result
+
+
+@router.get("/api/admin/articles/review/count", dependencies=[Depends(require_role(["admin", "editor"]))])
+def review_count_endpoint(session: Session = Depends(get_session)):
+    count = session.exec(
+        select(func.count(Article.id)).where(Article.status == "pending_review")
+    ).first() or 0
+    return {"pending_count": count}
+
+
 @router.get("/api/admin/articles/{article_id}", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
-def get_admin_article_endpoint(article_id: UUID, session: Session = Depends(get_session)):
-    article = session.get(Article, article_id)
+def get_admin_article_endpoint(
+    article_id: UUID,
+    user=Depends(require_role(["admin", "editor", "contributor"])),
+    session: Session = Depends(get_session),
+):
+    from sqlalchemy.orm import selectinload
+    article = session.exec(
+        select(Article).where(Article.id == article_id).options(selectinload(Article.author))
+    ).first()
     if not article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+    if user.role == "contributor" and str(article.author_id) != str(user.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
     response = article.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
+    if article.author:
+        response["author"] = {"id": str(article.author.id), "email": article.author.email}
+
+    if user.role == "contributor":
+        latest_rejection = session.exec(
+            select(ReviewAction)
+            .where(ReviewAction.article_id == article.id, ReviewAction.action == "rejected")
+            .order_by(ReviewAction.created_at.desc())
+            .limit(1)
+        ).first()
+        response["has_been_rejected"] = latest_rejection is not None
+        response["latest_rejection_feedback"] = latest_rejection.feedback if latest_rejection else None
+
     return response
+
+
+@router.post("/api/admin/articles/{article_id}/submit-review", dependencies=[Depends(require_role(["contributor"]))])
+def submit_review_endpoint(
+    article_id: UUID,
+    user=Depends(require_role(["contributor"])),
+    session: Session = Depends(get_session),
+):
+    article = session.get(Article, article_id)
+    if not article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+    if str(article.author_id) != str(user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only submit your own articles for review")
+    article.status = "pending_review"
+    article.submitted_at = datetime.now(timezone.utc)
+    article.updated_at = datetime.now(timezone.utc)
+    session.add(article)
+    session.commit()
+    session.refresh(article)
+    response = article.model_dump()
+    response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
+    if article.author:
+        response["author"] = {"id": str(article.author.id), "email": article.author.email}
+    return response
+
+
+@router.post("/api/admin/articles/{article_id}/approve", dependencies=[Depends(require_role(["admin", "editor"]))])
+def approve_review_endpoint(
+    article_id: UUID,
+    user=Depends(require_role(["admin", "editor"])),
+    session: Session = Depends(get_session),
+):
+    article = session.get(Article, article_id)
+    if not article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+
+    review_action = ReviewAction(
+        article_id=article.id,
+        reviewer_id=user.id,
+        action="approved",
+    )
+    article.status = "published"
+    article.published_at = datetime.now(timezone.utc)
+    article.submitted_at = None
+    article.updated_at = datetime.now(timezone.utc)
+    session.add(article)
+    session.add(review_action)
+    session.commit()
+    session.refresh(article)
+    response = article.model_dump()
+    response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
+    if article.author:
+        response["author"] = {"id": str(article.author.id), "email": article.author.email}
+    return response
+
+
+@router.post("/api/admin/articles/{article_id}/reject", dependencies=[Depends(require_role(["admin", "editor"]))])
+def reject_review_endpoint(
+    article_id: UUID,
+    data: ReviewRejectRequest,
+    user=Depends(require_role(["admin", "editor"])),
+    session: Session = Depends(get_session),
+):
+    article = session.get(Article, article_id)
+    if not article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+
+    review_action = ReviewAction(
+        article_id=article.id,
+        reviewer_id=user.id,
+        action="rejected",
+        feedback=data.feedback,
+    )
+    article.status = "draft"
+    article.submitted_at = None
+    article.updated_at = datetime.now(timezone.utc)
+    session.add(article)
+    session.add(review_action)
+    session.commit()
+    session.refresh(article)
+    response = article.model_dump()
+    response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
+    if article.author:
+        response["author"] = {"id": str(article.author.id), "email": article.author.email}
+    return response
+
 
 @router.put("/api/articles/{article_id}", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 async def update_article_endpoint(
@@ -530,7 +719,7 @@ def reassign_article_endpoint(
         response["author"] = None
     return response
 
-@router.get("/api/admin/newsletter-blasts/{article_id}/status", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
+@router.get("/api/admin/newsletter-blasts/{article_id}/status", dependencies=[Depends(require_role(["admin"]))])
 def get_newsletter_blast_status_endpoint(article_id: UUID, session: Session = Depends(get_session)):
     from sqlmodel import func, select
     

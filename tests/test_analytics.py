@@ -48,3 +48,53 @@ class TestAnalyticsBounceComplaintMetrics:
 
         assert "bounces" in data["growth"]
         assert "complaints" in data["growth"]
+
+
+class TestEndpointRoleTightening:
+    """Analytics, performance, and newsletter endpoints should be admin-only."""
+
+    def test_admin_can_access_analytics(self, client: TestClient, admin_token):
+        resp = client.get("/api/admin/analytics", headers=admin_token)
+        assert resp.status_code == 200
+
+    def test_editor_cannot_access_analytics(self, client: TestClient, session: Session):
+        from tests.conftest import create_user_token
+        editor_token = create_user_token(session, "editor@test.com", role="editor")
+        resp = client.get("/api/admin/analytics", headers=editor_token)
+        assert resp.status_code == 403
+
+    def test_contributor_cannot_access_analytics(self, client: TestClient, session: Session):
+        from tests.conftest import create_user_token
+        contrib_token = create_user_token(session, "contrib@test.com", role="contributor")
+        resp = client.get("/api/admin/analytics", headers=contrib_token)
+        assert resp.status_code == 403
+
+    def test_admin_can_access_performance(self, client: TestClient, admin_token):
+        resp = client.get("/api/admin/articles/performance", headers=admin_token)
+        assert resp.status_code == 200
+
+    def test_editor_cannot_access_performance(self, client: TestClient, session: Session):
+        from tests.conftest import create_user_token
+        editor_token = create_user_token(session, "editor2@test.com", role="editor")
+        resp = client.get("/api/admin/articles/performance", headers=editor_token)
+        assert resp.status_code == 403
+
+    def test_contributor_cannot_access_performance(self, client: TestClient, session: Session):
+        from tests.conftest import create_user_token
+        contrib_token = create_user_token(session, "contrib2@test.com", role="contributor")
+        resp = client.get("/api/admin/articles/performance", headers=contrib_token)
+        assert resp.status_code == 403
+
+    def test_editor_cannot_access_newsletter_status(self, client: TestClient, session: Session):
+        from tests.conftest import create_user_token
+        import uuid
+        editor_token = create_user_token(session, "editor3@test.com", role="editor")
+        resp = client.get(f"/api/admin/newsletter-blasts/{uuid.uuid4()}/status", headers=editor_token)
+        assert resp.status_code == 403
+
+    def test_contributor_cannot_access_newsletter_status(self, client: TestClient, session: Session):
+        from tests.conftest import create_user_token
+        import uuid
+        contrib_token = create_user_token(session, "contrib3@test.com", role="contributor")
+        resp = client.get(f"/api/admin/newsletter-blasts/{uuid.uuid4()}/status", headers=contrib_token)
+        assert resp.status_code == 403

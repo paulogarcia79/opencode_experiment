@@ -34,11 +34,12 @@ describe('useAutoSave', () => {
     })
     const articleId = ref('article-1')
 
-    const { status } = useAutoSave(form, articleId)
+    const { status, markFormTouched } = useAutoSave(form, articleId)
 
     expect(status.value).toBe('idle')
 
-    // Simulate typing
+    // Simulate user touching the form, then typing
+    markFormTouched()
     form.value.title = 'Hello World'
     await nextTick()
 
@@ -72,8 +73,9 @@ describe('useAutoSave', () => {
     })
     const articleId = ref('article-1')
 
-    useAutoSave(form, articleId)
+    const { markFormTouched } = useAutoSave(form, articleId)
 
+    markFormTouched()
     form.value.title = 'Updated'
     await nextTick()
     await vi.advanceTimersByTimeAsync(2000)
@@ -109,9 +111,10 @@ describe('useAutoSave', () => {
     })
     const articleId = ref('article-1')
 
-    useAutoSave(form, articleId)
+    const { markFormTouched } = useAutoSave(form, articleId)
 
     // First change triggers save after 2s
+    markFormTouched()
     form.value.title = 'Hello World'
     await nextTick()
     await vi.advanceTimersByTimeAsync(2000)
@@ -146,9 +149,10 @@ describe('useAutoSave', () => {
     })
     const articleId = ref('article-1')
 
-    useAutoSave(form, articleId)
+    const { markFormTouched } = useAutoSave(form, articleId)
 
     // Trigger a watch by mutating (even to same empty value)
+    markFormTouched()
     form.value.title = ''
     await nextTick()
     await vi.advanceTimersByTimeAsync(2000)
@@ -176,8 +180,9 @@ describe('useAutoSave', () => {
     const articleId = ref<string | null>(null)
     const onCreated = vi.fn()
 
-    useAutoSave(form, articleId, { onCreated })
+    const { markFormTouched } = useAutoSave(form, articleId, { onCreated })
 
+    markFormTouched()
     form.value.title = 'Hello World'
     await nextTick()
     await vi.advanceTimersByTimeAsync(2000)
@@ -209,9 +214,10 @@ describe('useAutoSave', () => {
     })
     const articleId = ref<string | null>(null)
 
-    useAutoSave(form, articleId)
+    const { markFormTouched } = useAutoSave(form, articleId)
 
     // Type content without a title
+    markFormTouched()
     form.value.content = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'More content' }] }] }
     await nextTick()
     await vi.advanceTimersByTimeAsync(2000)
@@ -245,10 +251,11 @@ describe('useAutoSave', () => {
     })
     const articleId = ref('article-1')
 
-    useAutoSave(form, articleId)
+    const { markFormTouched } = useAutoSave(form, articleId)
 
     // Type continuously every second for 35 seconds
     for (let i = 0; i < 35; i++) {
+      markFormTouched()
       form.value.title = `Hello ${i}`
       await nextTick()
       await vi.advanceTimersByTimeAsync(1000)
@@ -276,9 +283,10 @@ describe('useAutoSave', () => {
     })
     const articleId = ref('article-1')
 
-    const { status, retry } = useAutoSave(form, articleId)
+    const { status, retry, markFormTouched } = useAutoSave(form, articleId)
 
     // Trigger a save
+    markFormTouched()
     form.value.title = 'Hello World'
     await nextTick()
     await vi.advanceTimersByTimeAsync(2000)
@@ -314,5 +322,64 @@ describe('useAutoSave', () => {
     await vi.advanceTimersByTimeAsync(0)
     await nextTick()
     expect(mockFetch).toHaveBeenCalledTimes(5)
+  })
+
+  it('does not auto-save when form changes but formTouched is false', async () => {
+    const store = useAdminStore()
+    store.token = 'test-token'
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'article-1' }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const form = ref({
+      title: 'Hello',
+      description: '',
+      content: { type: 'doc', content: [{ type: 'paragraph' }] },
+      tag_names: [],
+    })
+    const articleId = ref('article-1')
+
+    useAutoSave(form, articleId)
+
+    // Change form without calling markFormTouched first
+    form.value.title = 'Hello World'
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(2000)
+    await nextTick()
+
+    // Should NOT have called fetch (formTouched is false)
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it('auto-saves when form changes after calling markFormTouched', async () => {
+    const store = useAdminStore()
+    store.token = 'test-token'
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'article-1' }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const form = ref({
+      title: 'Hello',
+      description: '',
+      content: { type: 'doc', content: [{ type: 'paragraph' }] },
+      tag_names: [],
+    })
+    const articleId = ref('article-1')
+
+    const { markFormTouched } = useAutoSave(form, articleId)
+
+    markFormTouched()
+    form.value.title = 'Hello World'
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(2000)
+    await nextTick()
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 })

@@ -11,6 +11,18 @@
     </div>
 
     <form @submit.prevent="handleSubmit" class="space-y-8">
+      <!-- Rejection Feedback Banner -->
+      <div v-if="isContributor && rejectionFeedback" class="border border-accent-500/20 bg-accent-500/10 rounded-xl p-5 flex items-start gap-4">
+        <div class="w-8 h-8 rounded-lg bg-accent-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="h-4 w-4 text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <p class="font-medium text-accent-300 text-sm">Article was rejected</p>
+          <p class="text-sm text-accent-400/80 mt-1">{{ rejectionFeedback }}</p>
+        </div>
+      </div>
       <!-- Title -->
       <div>
         <label class="block text-sm font-medium text-slate-400 mb-2">Title</label>
@@ -18,8 +30,10 @@
           v-model="form.title"
           type="text"
           required
-          class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200"
+          :disabled="isReadOnly"
+          class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           placeholder="Article title"
+          @input="markFormTouched()"
         />
       </div>
 
@@ -32,8 +46,10 @@
         <input
           v-model="form.description"
           type="text"
-          class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200"
+          :disabled="isReadOnly"
+          class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           placeholder="Brief description for the article card"
+          @input="markFormTouched()"
         />
       </div>
 
@@ -43,49 +59,136 @@
           Tags
           <span class="text-slate-600 font-normal">— max 8</span>
         </label>
-        <TagInput v-model="form.tags" />
+        <TagInput v-if="!isReadOnly" v-model="form.tags" />
+        <div v-else class="text-sm text-slate-500 italic">Tags are not editable in read-only mode</div>
       </div>
 
       <!-- Content Editor -->
       <div>
         <label class="block text-sm font-medium text-slate-400 mb-2">Content</label>
-        <TipTapEditor :key="editorKey" v-model="form.content" />
+        <TipTapEditor :key="editorKey" v-model="form.content" :editable="!isReadOnly" @update:model-value="markFormTouched()" />
       </div>
 
       <!-- Settings -->
-      <div class="flex flex-wrap items-center gap-6 p-5 rounded-xl border border-white/5 bg-white/[0.02]">
-        <label class="flex items-center gap-3 cursor-pointer">
-          <div class="relative">
-            <input
-              v-model="form.status"
-              type="checkbox"
-              :true-value="'published'"
-              :false-value="'draft'"
-              class="peer sr-only"
-            />
-            <div class="w-10 h-6 rounded-full bg-white/10 peer-checked:bg-primary-600 transition-colors duration-200" />
-            <div class="absolute left-1 top-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 peer-checked:translate-x-4" />
+      <div v-if="!isReadOnly" class="flex flex-wrap items-center gap-6 p-5 rounded-xl border border-white/5 bg-white/[0.02]">
+        <!-- Contributor: Read-only status badge + Submit for Review -->
+        <template v-if="isContributor">
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-slate-500">Status:</span>
+            <span
+              :class="[
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                form.status === 'published'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : form.status === 'pending_review'
+                    ? 'bg-accent-500/10 text-accent-400 border border-accent-500/20'
+                    : 'bg-slate-500/10 text-slate-400 border border-slate-500/20',
+              ]"
+            >
+              <span
+                :class="[
+                  'w-1.5 h-1.5 rounded-full',
+                  form.status === 'published' ? 'bg-emerald-400' : form.status === 'pending_review' ? 'bg-accent-400' : 'bg-slate-500',
+                ]"
+              />
+              {{ form.status }}
+            </span>
           </div>
-          <span class="text-sm text-slate-300">Publish immediately</span>
-        </label>
+          <button
+            v-if="form.status === 'draft'"
+            type="button"
+            @click="handleSubmitForReview"
+            :disabled="submitting"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-accent-600 hover:bg-accent-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer"
+          >
+            Submit for Review
+          </button>
+          <button
+            v-else-if="form.status === 'pending_review'"
+            type="button"
+            @click="handleSubmitForReview"
+            :disabled="submitting"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-accent-600 hover:bg-accent-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer"
+          >
+            Update Review
+          </button>
+          <button
+            v-else-if="form.status === 'published'"
+            type="button"
+            @click="handleSubmitForReview"
+            :disabled="submitting"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-accent-600 hover:bg-accent-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer"
+          >
+            Re-submit for Review
+          </button>
+        </template>
 
-        <label v-if="form.status === 'published'" class="flex items-center gap-3 cursor-pointer">
-          <div class="relative">
-            <input
-              v-model="form.send_newsletter"
-              type="checkbox"
-              class="peer sr-only"
-            />
-            <div class="w-10 h-6 rounded-full bg-white/10 peer-checked:bg-accent-600 transition-colors duration-200" />
-            <div class="absolute left-1 top-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 peer-checked:translate-x-4" />
-          </div>
-          <span class="text-sm text-slate-300">Send newsletter</span>
-        </label>
+        <!-- Admin/Editor: Publish toggle -->
+        <template v-else>
+          <label v-if="canPublish" class="flex items-center gap-3 cursor-pointer">
+            <div class="relative">
+              <input
+                v-model="form.status"
+                type="checkbox"
+                :true-value="'published'"
+                :false-value="'draft'"
+                class="peer sr-only"
+              />
+              <div class="w-10 h-6 rounded-full bg-white/10 peer-checked:bg-primary-600 transition-colors duration-200" />
+              <div class="absolute left-1 top-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 peer-checked:translate-x-4" />
+            </div>
+            <span class="text-sm text-slate-300">Publish immediately</span>
+          </label>
+
+          <label v-if="canPublish && form.status === 'published'" class="flex items-center gap-3 cursor-pointer">
+            <div class="relative">
+              <input
+                v-model="form.send_newsletter"
+                type="checkbox"
+                class="peer sr-only"
+              />
+              <div class="w-10 h-6 rounded-full bg-white/10 peer-checked:bg-accent-600 transition-colors duration-200" />
+              <div class="absolute left-1 top-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 peer-checked:translate-x-4" />
+            </div>
+            <span class="text-sm text-slate-300">Send newsletter</span>
+          </label>
+        </template>
+      </div>
+
+      <!-- Change Author (Admin Only) -->
+      <div v-if="isAdmin && isEditing" class="p-5 rounded-xl border border-white/5 bg-white/[0.02]">
+        <h3 class="text-sm font-medium text-slate-400 mb-3">Change Author</h3>
+        <div class="flex items-center gap-3">
+          <select
+            v-model="selectedAuthorId"
+            class="flex-1 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200"
+          >
+            <option value="" disabled>Select a user</option>
+            <option v-for="user in activeUsers" :key="user.id" :value="user.id">
+              {{ user.email }}
+            </option>
+          </select>
+          <button
+            type="button"
+            @click="handleReassign"
+            :disabled="!selectedAuthorId || reassigning"
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg border border-white/10 transition-all duration-200 cursor-pointer"
+          >
+            <svg v-if="reassigning" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <span v-if="reassigning">Reassigning...</span>
+            <span v-else>Reassign</span>
+          </button>
+        </div>
+        <p v-if="reassignError" class="mt-2 text-xs text-red-400">{{ reassignError }}</p>
       </div>
 
       <!-- Actions -->
-      <div class="flex items-center gap-3">
+      <div v-if="!isReadOnly" class="flex items-center gap-3">
         <button
+          v-if="!(isContributor && isEditing)"
           type="submit"
           :disabled="submitting"
           class="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-lg shadow-primary-600/20 hover:shadow-primary-500/30 cursor-pointer"
@@ -98,7 +201,7 @@
           <span v-else>{{ isEditing ? 'Update Article' : 'Create Article' }}</span>
         </button>
         <button
-          v-if="isEditing"
+          v-if="isEditing && !isContributor"
           type="button"
           @click="handleSendPreview"
           :disabled="previewing"
@@ -211,14 +314,17 @@ import { useRoute, useRouter } from 'vue-router'
 import TipTapEditor from '@/components/TipTapEditor.vue'
 import TagInput from '@/components/TagInput.vue'
 import RevisionPanel from '@/components/RevisionPanel.vue'
-import { createArticle, updateArticle, fetchAdminArticle, sendPreviewEmail } from '@/composables/useAdminApi'
+import { createArticle, updateArticle, fetchAdminArticle, sendPreviewEmail, fetchUsers, reassignArticle } from '@/composables/useAdminApi'
 import { useAutoSave } from '@/composables/useAutoSave'
+import { useAdminStore } from '@/stores/admin'
 import type { TagItem } from '@/components/TagInput.vue'
-import type { TipTapContent } from '@/types'
+import type { TipTapContent, User } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
+const store = useAdminStore()
 const isEditing = ref(false)
+const loadedArticle = ref<{ author?: { id: string } | null } | null>(null)
 
 const form = ref({
   title: '',
@@ -237,6 +343,34 @@ const editorKey = ref(0)
 const articleId = ref<string | null>(null)
 const showHistory = ref(false)
 
+const activeUsers = ref<User[]>([])
+const selectedAuthorId = ref('')
+const reassigning = ref(false)
+const reassignError = ref('')
+
+const isAdmin = computed(() => store.user?.role === 'admin')
+const canPublish = computed(() => {
+  const user = store.user
+  if (!user) return false
+  return user.role === 'admin' || user.role === 'editor'
+})
+
+const isContributor = computed(() => store.user?.role === 'contributor')
+
+const isReadOnly = computed(() => {
+  if (!store.user || !loadedArticle.value) return false
+  return loadedArticle.value.author?.id !== store.user.id
+})
+
+const namespace = computed(() => {
+  const role = store.user?.role
+  if (role === 'editor') return '/editor'
+  if (role === 'contributor') return '/contributor'
+  return '/admin'
+})
+
+const rejectionFeedback = ref<string | null>(null)
+
 const currentArticleForHistory = computed(() => ({
   title: form.value.title,
   description: form.value.description,
@@ -251,19 +385,39 @@ const autosaveForm = computed(() => ({
   tag_names: form.value.tags.map((t) => t.name),
 }))
 
-const { status: autosaveStatus, retry: retryAutoSave } = useAutoSave(autosaveForm, articleId, {
+const { status: autosaveStatus, retry: retryAutoSave, markFormTouched } = useAutoSave(autosaveForm, articleId, {
   onCreated: (id: string) => {
-    router.replace(`/admin/articles/${id}/edit`)
+    router.replace(`${namespace.value}/articles/${id}/edit`)
     isEditing.value = true
   },
 })
 
 onMounted(async () => {
+  if (isAdmin.value) {
+    try {
+      activeUsers.value = await fetchUsers()
+    } catch {
+      // Silently fail - reassign UI will just show empty dropdown
+    }
+  }
+
   const id = route.params.id as string
   if (id && id !== 'new') {
     isEditing.value = true
     try {
       const article = await fetchAdminArticle(id)
+      loadedArticle.value = article
+
+      if (isContributor.value && article.author?.id !== store.user?.id) {
+        router.replace(`${namespace.value}`)
+        return
+      }
+
+      // Load rejection feedback for rejected articles
+      if (isContributor.value) {
+        rejectionFeedback.value = (article as any).latest_rejection_feedback || null
+      }
+
       form.value.title = article.title
       form.value.description = article.description || ''
       form.value.content = article.content || { type: 'doc', content: [{ type: 'paragraph' }] }
@@ -291,8 +445,8 @@ async function handleSubmit() {
       title: form.value.title,
       content: form.value.content,
       description: form.value.description || undefined,
-      status: form.value.status,
-      send_newsletter: form.value.send_newsletter,
+      status: isContributor.value ? 'draft' : form.value.status,
+      send_newsletter: isContributor.value ? false : form.value.send_newsletter,
       tag_names: form.value.tags.map((t) => t.name),
     }
 
@@ -302,12 +456,44 @@ async function handleSubmit() {
     } else {
       const article = await createArticle(payload)
       message.value = 'Article created successfully.'
-      router.push(`/admin/articles/${article.id}/edit`)
+      router.push(`${namespace.value}/articles/${article.id}/edit`)
     }
     state.value = 'success'
     } catch (e: unknown) {
       state.value = 'error'
       message.value = (e instanceof Error ? e.message : 'Something went wrong.') || 'Something went wrong.'
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function handleSubmitForReview() {
+  if (submitting.value || !articleId.value) return
+
+  state.value = 'idle'
+  message.value = ''
+  submitting.value = true
+
+  try {
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(`${API_BASE}/api/admin/articles/${articleId.value}/submit-review`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${store.token}`,
+      },
+    })
+    if (!res.ok) {
+      throw new Error(`Failed to submit for review (${res.status})`)
+    }
+    const data = await res.json()
+    form.value.status = data.status
+    rejectionFeedback.value = null
+    state.value = 'success'
+    message.value = 'Submitted for review.'
+  } catch (e: unknown) {
+    state.value = 'error'
+    message.value = (e instanceof Error ? e.message : 'Something went wrong.') || 'Something went wrong.'
   } finally {
     submitting.value = false
   }
@@ -341,5 +527,31 @@ async function handleRestored(article: unknown) {
   showHistory.value = false
   state.value = 'success'
   message.value = 'Article restored to previous version.'
+}
+
+async function handleReassign() {
+  if (!selectedAuthorId.value || !articleId.value) return
+
+  const targetUser = activeUsers.value.find((u) => u.id === selectedAuthorId.value)
+  if (!targetUser) return
+
+  if (!confirm(`Reassign this article to ${targetUser.email}?`)) return
+
+  reassigning.value = true
+  reassignError.value = ''
+
+  try {
+    await reassignArticle(articleId.value, selectedAuthorId.value)
+    if (loadedArticle.value) {
+      loadedArticle.value.author = { id: selectedAuthorId.value }
+    }
+    state.value = 'success'
+    message.value = `Article reassigned to ${targetUser.email}.`
+    selectedAuthorId.value = ''
+  } catch (e: unknown) {
+    reassignError.value = e instanceof Error ? e.message : 'Failed to reassign article'
+  } finally {
+    reassigning.value = false
+  }
 }
 </script>

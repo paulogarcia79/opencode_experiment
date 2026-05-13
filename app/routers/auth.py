@@ -5,10 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models.user import User
-from app.schemas import LoginRequest, ForgotPasswordRequest, ResetPasswordRequest
+from app.schemas import LoginRequest, ForgotPasswordRequest, ResetPasswordRequest, SetupRequest
 from app.services.auth_service import verify_password, create_access_token, generate_reset_token, validate_reset_token, reset_password, pwd_context
 from app.services.email_service import send_password_reset_email, send_verification_email
 from app.dependencies import require_role
+from app.services.user_management_service import validate_setup_token, complete_setup
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -25,12 +26,17 @@ def login(request: LoginRequest, session: Session = Depends(get_session)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account is deactivated",
+        )
     if not verify_password(request.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
-    
+
     access_token = create_access_token(data={"sub": str(user.id), "token_version": user.token_version})
     return {"token": access_token, "type": "bearer"}
 
@@ -77,11 +83,24 @@ def reset_password(request: ResetPasswordRequest, session: Session = Depends(get
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired reset token.",
         )
-    
+
     from app.services.auth_service import reset_password as do_reset_password
     do_reset_password(user, request.new_password, session)
-    
+
     return {"message": "Password reset successfully."}
+
+@router.post("/setup")
+def setup_account(request: SetupRequest, session: Session = Depends(get_session)):
+    user = validate_setup_token(request.token, session)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired setup token.",
+        )
+
+    complete_setup(user, request.password, session)
+
+    return {"message": "Account setup successfully."}
 
 
 class VerifyEmailRequest:

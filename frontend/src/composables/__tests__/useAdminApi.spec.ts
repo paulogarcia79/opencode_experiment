@@ -18,6 +18,7 @@ import {
   inviteUser,
   updateUserRole,
   toggleUserActive,
+  reassignArticle,
 } from '@/composables/useAdminApi'
 import { useAdminStore } from '@/stores/admin'
 
@@ -570,6 +571,42 @@ describe('toggleUserActive', () => {
     )
 
     await expect(toggleUserActive('nonexistent', true)).rejects.toThrow('User not found')
+    vi.restoreAllMocks()
+  })
+})
+
+describe('reassignArticle', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('calls reassign endpoint with articleId and authorId on success', async () => {
+    const mockData = { message: 'Article reassigned' }
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    )
+
+    const result = await reassignArticle('article-1', 'new-author-id')
+
+    expect(result).toEqual(mockData)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/admin/articles/article-1/reassign',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ author_id: 'new-author-id' }),
+      })
+    )
+    fetchSpy.mockRestore()
+  })
+
+  it('throws on error response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'Target user is inactive' }), { status: 400 })
+    )
+
+    await expect(reassignArticle('article-1', 'inactive-user')).rejects.toThrow('Target user is inactive')
     vi.restoreAllMocks()
   })
 })

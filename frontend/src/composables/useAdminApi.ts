@@ -181,6 +181,19 @@ export async function resetPassword(token: string, newPassword: string) {
   return res.json()
 }
 
+export async function setupAccount(token: string, password: string) {
+  const res = await fetch(`${API_BASE}/api/auth/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Failed to set up account')
+  }
+  return res.json()
+}
+
 export async function resendVerification(email: string) {
   const res = await fetch(`${API_BASE}/api/auth/resend-verification`, {
     method: 'POST',
@@ -319,6 +332,19 @@ export async function toggleUserActive(userId: string, isActive: boolean) {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}))
     throw new Error(errorData.detail || 'Failed to update user status')
+  }
+  return res.json() as Promise<{ message: string }>
+}
+
+export async function reassignArticle(articleId: string, authorId: string) {
+  const res = await fetch(`${API_BASE}/api/admin/articles/${articleId}/reassign`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ author_id: authorId }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Failed to reassign article')
   }
   return res.json() as Promise<{ message: string }>
 }

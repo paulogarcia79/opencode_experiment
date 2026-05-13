@@ -13,9 +13,10 @@ class Article(SQLModel, table=True):
     slug: str = Field(unique=True, index=True, nullable=False)
     content: dict = Field(default_factory=dict, sa_column=Column(JSON))
     description: Optional[str] = Field(default=None)
-    status: str = Field(default="draft", nullable=False)  # "draft" or "published"
+    status: str = Field(default="draft", nullable=False)  # "draft", "pending_review", or "published"
     send_newsletter: bool = Field(default=True, nullable=False)
     published_at: Optional[datetime] = Field(default=None)
+    submitted_at: Optional[datetime] = Field(default=None, nullable=True)
     scheduled_for: Optional[datetime] = Field(default=None, nullable=True)
     search_text: Optional[str] = Field(default=None, sa_column=Column(Text))
     author_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id", nullable=True)

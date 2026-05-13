@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import AdminArticleEditView from '@/views/AdminArticleEditView.vue'
 
 const mockParams = { id: 'new' }
@@ -18,17 +19,21 @@ vi.mock('@/composables/useAdminApi', () => ({
   createArticle: vi.fn(),
   updateArticle: vi.fn(),
   sendPreviewEmail: vi.fn(),
+  fetchUsers: vi.fn(),
+  reassignArticle: vi.fn(),
 }))
 
 vi.mock('@/composables/useAutoSave', () => ({
   useAutoSave: vi.fn().mockReturnValue({
     status: ref('idle'),
     retry: vi.fn(),
+    markFormTouched: vi.fn(),
   }),
 }))
 
-import { fetchAdminArticle, createArticle, updateArticle, sendPreviewEmail } from '@/composables/useAdminApi'
+import { fetchAdminArticle, createArticle, updateArticle, sendPreviewEmail, fetchUsers, reassignArticle } from '@/composables/useAdminApi'
 import { useAutoSave } from '@/composables/useAutoSave'
+import { useAdminStore } from '@/stores/admin'
 
 const RouterLink = {
   template: '<a :href="to"><slot /></a>',
@@ -47,6 +52,16 @@ const TagInput = {
 
 describe('AdminArticleEditView', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
+    const store = useAdminStore()
+    store.setUser({
+      id: 'user-1',
+      email: 'admin@example.com',
+      role: 'admin',
+      is_active: true,
+      is_verified: true,
+      created_at: '2025-01-01T00:00:00Z',
+    })
     vi.clearAllMocks()
     mockParams.id = 'new'
   })
@@ -174,6 +189,7 @@ describe('AdminArticleEditView', () => {
       error: ref<string | null>(null),
       lastSavedAt: ref<Date | null>(null),
       retry: vi.fn(),
+      markFormTouched: vi.fn(),
     })
 
     const wrapper = mount(AdminArticleEditView, {
@@ -269,5 +285,153 @@ describe('AdminArticleEditView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Network error')
+  })
+
+  it('shows Change Author dropdown for admin when editing', async () => {
+    mockParams.id = '123'
+    vi.mocked(fetchAdminArticle).mockResolvedValue({
+      id: '123',
+      title: 'Existing',
+      slug: 'existing',
+      description: '',
+      content: { type: 'doc', content: [] },
+      status: 'draft',
+      send_newsletter: true,
+      published_at: null,
+      scheduled_for: null,
+      search_text: null,
+      created_at: '2025-01-15T00:00:00Z',
+      updated_at: '2025-01-15T00:00:00Z',
+      author: { id: 'user-1', email: 'admin@example.com' },
+      tags: [],
+    })
+    vi.mocked(fetchUsers).mockResolvedValue([
+      { id: 'user-1', email: 'admin@example.com', role: 'admin', is_active: true, is_verified: true, created_at: '2025-01-01T00:00:00Z' },
+      { id: 'user-2', email: 'editor@example.com', role: 'editor', is_active: true, is_verified: true, created_at: '2025-01-01T00:00:00Z' },
+    ])
+
+    const wrapper = mount(AdminArticleEditView, {
+      global: { components: { RouterLink, TipTapEditor, TagInput } },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Change Author')
+    expect(wrapper.find('select').exists()).toBe(true)
+  })
+
+  it('hides Change Author dropdown for editor', async () => {
+    const store = useAdminStore()
+    store.setUser({
+      id: 'user-1',
+      email: 'editor@example.com',
+      role: 'editor',
+      is_active: true,
+      is_verified: true,
+      created_at: '2025-01-01T00:00:00Z',
+    })
+
+    mockParams.id = '123'
+    vi.mocked(fetchAdminArticle).mockResolvedValue({
+      id: '123',
+      title: 'Existing',
+      slug: 'existing',
+      description: '',
+      content: { type: 'doc', content: [] },
+      status: 'draft',
+      send_newsletter: true,
+      published_at: null,
+      scheduled_for: null,
+      search_text: null,
+      created_at: '2025-01-15T00:00:00Z',
+      updated_at: '2025-01-15T00:00:00Z',
+      author: { id: 'user-1', email: 'editor@example.com' },
+      tags: [],
+    })
+
+    const wrapper = mount(AdminArticleEditView, {
+      global: { components: { RouterLink, TipTapEditor, TagInput } },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Change Author')
+  })
+
+  it('calls reassignArticle when selecting user and confirming', async () => {
+    mockParams.id = '123'
+    vi.mocked(fetchAdminArticle).mockResolvedValue({
+      id: '123',
+      title: 'Existing',
+      slug: 'existing',
+      description: '',
+      content: { type: 'doc', content: [] },
+      status: 'draft',
+      send_newsletter: true,
+      published_at: null,
+      scheduled_for: null,
+      search_text: null,
+      created_at: '2025-01-15T00:00:00Z',
+      updated_at: '2025-01-15T00:00:00Z',
+      author: { id: 'user-1', email: 'admin@example.com' },
+      tags: [],
+    })
+    vi.mocked(fetchUsers).mockResolvedValue([
+      { id: 'user-2', email: 'editor@example.com', role: 'editor', is_active: true, is_verified: true, created_at: '2025-01-01T00:00:00Z' },
+    ])
+    vi.mocked(reassignArticle).mockResolvedValue({ message: 'Article reassigned' })
+    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true))
+
+    const wrapper = mount(AdminArticleEditView, {
+      global: { components: { RouterLink, TipTapEditor, TagInput } },
+    })
+    await flushPromises()
+
+    const select = wrapper.find('select')
+    await select.setValue('user-2')
+
+    const reassignBtn = wrapper.findAll('button').find(btn => btn.text() === 'Reassign')
+    await reassignBtn!.trigger('click')
+    await flushPromises()
+
+    expect(reassignArticle).toHaveBeenCalledWith('123', 'user-2')
+    expect(wrapper.text()).toContain('Article reassigned to editor@example.com')
+  })
+
+  it('shows error when reassign fails', async () => {
+    mockParams.id = '123'
+    vi.mocked(fetchAdminArticle).mockResolvedValue({
+      id: '123',
+      title: 'Existing',
+      slug: 'existing',
+      description: '',
+      content: { type: 'doc', content: [] },
+      status: 'draft',
+      send_newsletter: true,
+      published_at: null,
+      scheduled_for: null,
+      search_text: null,
+      created_at: '2025-01-15T00:00:00Z',
+      updated_at: '2025-01-15T00:00:00Z',
+      author: { id: 'user-1', email: 'admin@example.com' },
+      tags: [],
+    })
+    vi.mocked(fetchUsers).mockResolvedValue([
+      { id: 'user-2', email: 'inactive@example.com', role: 'contributor', is_active: false, is_verified: true, created_at: '2025-01-01T00:00:00Z' },
+    ])
+    vi.mocked(reassignArticle).mockRejectedValue(new Error('Target user is inactive'))
+    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true))
+
+    const wrapper = mount(AdminArticleEditView, {
+      global: { components: { RouterLink, TipTapEditor, TagInput } },
+    })
+    await flushPromises()
+
+    const select = wrapper.find('select')
+    await select.setValue('user-2')
+
+    const reassignBtn = wrapper.findAll('button').find(btn => btn.text() === 'Reassign')
+    await reassignBtn!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Target user is inactive')
   })
 })

@@ -65,6 +65,9 @@ describe('AdminLoginView', () => {
   it('stores token and redirects on successful login', async () => {
     vi.mocked(login).mockResolvedValue({ token: 'new-jwt-token', type: 'bearer' })
     const store = useAdminStore()
+    // Prevent fetchMe from clearing the token during the test
+    const originalFetchMe = store.fetchMe
+    store.fetchMe = vi.fn().mockResolvedValue(undefined)
 
     const wrapper = mount(AdminLoginView, { global: { components: { RouterLink } } })
     
@@ -76,5 +79,7 @@ describe('AdminLoginView', () => {
     expect(login).toHaveBeenCalledWith('admin@example.com', 'pass')
     expect(store.token).toBe('new-jwt-token')
     expect(mockPush).toHaveBeenCalledWith('/admin')
+
+    store.fetchMe = originalFetchMe
   })
 })
