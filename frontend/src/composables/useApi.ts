@@ -7,7 +7,17 @@ export async function fetchArticles() {
 }
 
 export async function fetchArticle(slug: string) {
-  const res = await fetch(`${API_BASE}/api/articles/${slug}`)
+  const headers: Record<string, string> = {}
+  try {
+    const { useAdminStore } = await import('@/stores/admin')
+    const store = useAdminStore()
+    if (store.token) {
+      headers.Authorization = `Bearer ${store.token}`
+    }
+  } catch {
+    // store not available (e.g., SSR), proceed without auth
+  }
+  const res = await fetch(`${API_BASE}/api/articles/${slug}`, { headers })
   if (!res.ok) throw new Error('Article not found')
   return res.json()
 }
