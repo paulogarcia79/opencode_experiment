@@ -71,14 +71,14 @@ def get_article_endpoint(request: Request, slug: str, session: Session = Depends
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
 
-    # Allow admin/editor to view non-published articles
+    # Allow admin/editor/author to view non-published articles
     can_view_non_published = False
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
         try:
             token = auth[7:]
             user = _decode_and_validate_user(token, session)
-            if user.role in ("admin", "editor"):
+            if user.role in ("admin", "editor") or article.author_id == user.id:
                 can_view_non_published = True
         except HTTPException:
             pass

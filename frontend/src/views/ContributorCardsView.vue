@@ -139,7 +139,7 @@
           <!-- Actions -->
           <div class="flex items-center gap-2 mt-auto pt-3 border-t border-white/5">
             <RouterLink
-              :to="`/contributor/articles/${article.id}/preview`"
+              :to="`/articles/${article.slug}`"
               class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white border border-white/10 hover:border-white/20 rounded-md transition-colors duration-200 cursor-pointer"
             >
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
