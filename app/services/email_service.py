@@ -148,14 +148,15 @@ def send_password_reset_email(email: str, reset_token: str) -> None:
         logger.error(f"Failed to send password reset email to {email}: {str(e)}")
         raise EmailServiceError(str(e))
 
-def send_verification_email(email: str, verification_token: str) -> None:
+def send_verification_email(email: str, verification_token: str, role: str = "contributor") -> None:
     if not settings.RESEND_API_KEY:
         return
-    verification_url = f"{settings.APP_BASE_URL}/api/auth/verify-email?token={verification_token}"
+    verification_url = f"{settings.APP_BASE_URL}/verify-email?token={verification_token}"
 
     html = render("email_verification.mjml", {
         "verification_url": verification_url,
         "preview_text": "Verify your email address.",
+        "role": role,
     })
 
     html, attachments = _process_cids(html)
@@ -178,7 +179,7 @@ def send_verification_email(email: str, verification_token: str) -> None:
 def send_invite_email(email: str, setup_token: str, role: str) -> None:
     if not settings.RESEND_API_KEY:
         return
-    setup_url = f"{settings.APP_BASE_URL}/admin/setup?token={setup_token}"
+    setup_url = f"{settings.APP_BASE_URL}/auth?setup={setup_token}"
 
     html = render("invite.mjml", {
         "setup_url": setup_url,

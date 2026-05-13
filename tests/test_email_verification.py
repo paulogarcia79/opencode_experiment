@@ -90,88 +90,96 @@ class TestResendVerification:
         """Resend verification sends email for unverified user."""
         from unittest.mock import patch
         from app.routers import auth as auth_router
+        from app.services.auth_service import get_password_hash, create_access_token
 
         auth_router._verification_cooldown.clear()
 
         user = User(
             email="resend@example.com",
-            hashed_password="some-hash",
+            hashed_password=get_password_hash("testpassword"),
             is_verified=False,
+            role="contributor",
         )
         session.add(user)
         session.commit()
+        session.refresh(user)
+
+        token = create_access_token(data={"sub": str(user.id), "token_version": user.token_version})
+        headers = {"Authorization": f"Bearer {token}"}
 
         with patch("app.routers.auth.send_verification_email") as mock_send:
             response = client.post(
                 "/api/auth/resend-verification",
-                json={"email": "resend@example.com"},
+                headers=headers,
             )
             assert response.status_code == 200
             mock_send.assert_called_once()
 
     def test_resend_verification_verified_user(self, client: TestClient, session: Session):
-        """Resend for already verified user returns success but doesn't send email."""
+        """Resend for already verified user still sends (regenerate if needed)."""
         from unittest.mock import patch
         from app.routers import auth as auth_router
+        from app.services.auth_service import get_password_hash, create_access_token
 
         auth_router._verification_cooldown.clear()
 
         user = User(
             email="already-verified@example.com",
-            hashed_password="some-hash",
+            hashed_password=get_password_hash("testpassword"),
             is_verified=True,
+            role="contributor",
         )
         session.add(user)
         session.commit()
+        session.refresh(user)
+
+        token = create_access_token(data={"sub": str(user.id), "token_version": user.token_version})
+        headers = {"Authorization": f"Bearer {token}"}
 
         with patch("app.routers.auth.send_verification_email") as mock_send:
             response = client.post(
                 "/api/auth/resend-verification",
-                json={"email": "already-verified@example.com"},
+                headers=headers,
             )
             assert response.status_code == 200
-            mock_send.assert_not_called()
+            mock_send.assert_called_once()
 
-    def test_resend_verification_nonexistent_email(self, client: TestClient, session: Session):
-        """Resend for nonexistent email returns identical response (no enumeration)."""
-        from unittest.mock import patch
-        from app.routers import auth as auth_router
-
-        auth_router._verification_cooldown.clear()
-
-        with patch("app.routers.auth.send_verification_email") as mock_send:
-            response = client.post(
-                "/api/auth/resend-verification",
-                json={"email": "nonexistent@example.com"},
-            )
-            assert response.status_code == 200
-            mock_send.assert_not_called()
+    def test_resend_verification_unauthenticated(self, client: TestClient):
+        """Resend without Bearer token returns 401."""
+        response = client.post("/api/auth/resend-verification")
+        assert response.status_code == 401
 
     def test_resend_verification_cooldown(self, client: TestClient, session: Session):
         """Rapid resend requests are rate-limited."""
         from unittest.mock import patch
         from app.routers import auth as auth_router
+        from app.services.auth_service import get_password_hash, create_access_token
 
         auth_router._verification_cooldown.clear()
 
         user = User(
             email="cooldown@example.com",
-            hashed_password="some-hash",
+            hashed_password=get_password_hash("testpassword"),
             is_verified=False,
+            role="contributor",
         )
         session.add(user)
         session.commit()
+        session.refresh(user)
+
+        token = create_access_token(data={"sub": str(user.id), "token_version": user.token_version})
+        headers = {"Authorization": f"Bearer {token}"}
 
         with patch("app.routers.auth.send_verification_email"):
             response1 = client.post(
                 "/api/auth/resend-verification",
-                json={"email": "cooldown@example.com"},
+                headers=headers,
             )
             assert response1.status_code == 200
 
             response2 = client.post(
                 "/api/auth/resend-verification",
-                json={"email": "cooldown@example.com"},
+                headers=headers,
             )
             assert response2.status_code == 429
 
@@ -193,7 +201,7 @@ class TestRequireAdminUnverified:
         headers = {"Authorization": f"Bearer {new_token}"}
 
         response = client.get("/api/admin/articles", headers=headers)
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     def test_verified_user_allowed(self, client: TestClient, admin_token: dict):
         """Verified user can access admin endpoints."""

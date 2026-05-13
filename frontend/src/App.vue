@@ -1,10 +1,40 @@
 <template>
+  <SiteHeader />
+  <VerificationBanner />
   <router-view />
   <ToastContainer />
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useAdminStore } from '@/stores/admin'
+import { exchangeOAuthCode } from '@/composables/useAdminApi'
+import SiteHeader from '@/components/SiteHeader.vue'
+import VerificationBanner from '@/components/VerificationBanner.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
+
+const router = useRouter()
+const route = useRoute()
+const store = useAdminStore()
+
+function getDashboardForRole(role: string | undefined): string {
+  const dashboards: Record<string, string> = { admin: '/admin', editor: '/editor', contributor: '/contributor' }
+  return dashboards[role ?? ''] || '/admin'
+}
+
+watch(() => route.query.oauth_code, async (code) => {
+  if (!code || store.token) return
+  try {
+    const data = await exchangeOAuthCode(code as string)
+    store.setToken(data.token)
+    await store.fetchMe()
+    router.replace(getDashboardForRole(store.user?.role))
+  } catch (e) {
+    console.error('OAuth login failed:', e)
+    router.replace('/auth')
+  }
+}, { immediate: true })
 </script>
 
 <style>

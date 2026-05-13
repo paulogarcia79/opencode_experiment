@@ -64,10 +64,14 @@ def invite_user(
 
     existing = session.exec(select(User).where(User.email == email)).first()
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A user with this email already exists.",
-        )
+        existing.role = request.role
+        existing.is_verified = False
+        session.add(existing)
+        session.commit()
+        plaintext_token = generate_setup_token(existing, session)
+        send_invite_email(email, plaintext_token, request.role)
+        _invite_cooldown[email] = now
+        return {"message": f"Invite sent to existing user: {email}"}
 
     user = create_invited_user(email, request.role, session)
     plaintext_token = generate_setup_token(user, session)

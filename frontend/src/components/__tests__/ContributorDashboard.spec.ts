@@ -19,7 +19,7 @@ describe('ContributorDashboard', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders contributor nav items: Articles, Import, Settings', () => {
+  it('renders contributor nav items: Articles, Import', () => {
     const store = useAdminStore()
     store.setUser({ id: '1', email: 'contrib@test.com', role: 'contributor', is_active: true, is_verified: true, created_at: '' })
 
@@ -30,7 +30,6 @@ describe('ContributorDashboard', () => {
     const text = wrapper.text()
     expect(text).toContain('Articles')
     expect(text).toContain('Import')
-    expect(text).toContain('Settings')
   })
 
   it('does not show admin/editor-only nav items', () => {

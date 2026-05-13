@@ -19,7 +19,7 @@ describe('EditorDashboard', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders editor nav items: Articles, Review, Import, Settings', () => {
+  it('renders editor nav items: Articles, Review, Import', () => {
     const store = useAdminStore()
     store.setUser({ id: '1', email: 'editor@test.com', role: 'editor', is_active: true, is_verified: true, created_at: '' })
 
@@ -31,7 +31,6 @@ describe('EditorDashboard', () => {
     expect(text).toContain('Articles')
     expect(text).toContain('Review')
     expect(text).toContain('Import')
-    expect(text).toContain('Settings')
   })
 
   it('does not show admin-only nav items', () => {

@@ -102,9 +102,14 @@ class TestOAuthCallback:
                     params={"code": "fake-code", "state": "test-state"},
                     follow_redirects=False,
                 )
-                # Should redirect to verify-email page
+                # Should redirect to frontend with oauth_code (auto-verified)
                 assert response.status_code == 302
-                assert "/admin/verify-email" in response.headers["location"]
+                assert "oauth_code=" in response.headers["location"]
+
+                # User should be auto-verified
+                new_user = session.exec(select(User).where(User.email == "new-oauth-user@gmail.com")).first()
+                assert new_user is not None
+                assert new_user.is_verified is True
 
     def test_callback_links_existing_user(self, client: TestClient, session: Session, monkeypatch):
         """OAuth callback for existing email should link accounts and redirect with one-time code."""
@@ -135,9 +140,9 @@ class TestOAuthCallback:
                     params={"code": "fake-code", "state": "test-state"},
                     follow_redirects=False,
                 )
-                # Should redirect to /admin/login with oauth_code (not oauth_token)
+                # Should redirect to / with oauth_code for exchange
                 assert response.status_code == 302
-                assert "/admin/login?oauth_code=" in response.headers["location"]
+                assert "oauth_code=" in response.headers["location"]
 
                 # Verify OAuth provider was linked
                 providers = session.exec(
@@ -169,12 +174,12 @@ class TestOAuthCallback:
                     follow_redirects=False,
                 )
                 assert response.status_code == 302
-                assert "/admin/verify-email" in response.headers["location"]
+                assert "oauth_code=" in response.headers["location"]
 
                 # Verify user was created with GitHub provider
                 new_user = session.exec(select(User).where(User.email == "github-user@github.com")).first()
                 assert new_user is not None
-                assert new_user.is_verified is False
+                assert new_user.is_verified is True
 
                 providers = session.exec(
                     select(UserOAuthProvider).where(

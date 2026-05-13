@@ -73,7 +73,7 @@
 
         <div class="mt-6 text-center">
           <RouterLink
-            to="/admin/login"
+            to="/auth"
             class="text-sm text-slate-500 hover:text-primary-400 transition-colors duration-200 cursor-pointer"
           >
             Back to login
@@ -118,7 +118,7 @@ async function handleSubmit() {
   
   try {
     await resetPassword(token, password.value)
-    router.push('/admin/login')
+    router.push('/auth')
   } catch (e: any) {
     error.value = e.message || 'Something went wrong'
   } finally {

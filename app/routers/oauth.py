@@ -196,15 +196,15 @@ async def oauth_callback(request: Request, session: Session = Depends(get_sessio
         await redis_conn.setex(f"oauth_code:{oauth_code}", OAUTH_CODE_TTL_SECONDS, jwt_token)
         await redis_conn.aclose()
 
-        frontend_url = f"{settings.APP_BASE_URL}/admin/login?oauth_code={oauth_code}"
+        frontend_url = f"{settings.APP_BASE_URL}/?oauth_code={oauth_code}"
         return RedirectResponse(url=frontend_url, status_code=302)
     else:
-        # Create new user
+        # Create new user — auto-verified since email was verified by OAuth provider
         new_user = User(
             id=uuid.uuid4(),
             email=email.lower(),
             hashed_password="oauth-only:" + get_password_hash(secrets.token_urlsafe(32)),
-            is_verified=False,
+            is_verified=True,
         )
         session.add(new_user)
         session.flush()
@@ -217,13 +217,20 @@ async def oauth_callback(request: Request, session: Session = Depends(get_sessio
         )
         session.add(oauth_provider)
 
-        # Send verification email
-        _send_verification(new_user, session)
+        # Auto-verified — no verification email needed
         session.commit()
 
-        # Redirect to verify-email page
-        verify_url = f"{settings.APP_BASE_URL}/admin/verify-email?email={email}"
-        return RedirectResponse(url=verify_url, status_code=302)
+        # Generate JWT and store in Redis as one-time code
+        jwt_token = create_access_token(
+            data={"sub": str(new_user.id), "token_version": new_user.token_version}
+        )
+        oauth_code = secrets.token_urlsafe(32)
+        redis_conn = _get_redis()
+        await redis_conn.setex(f"oauth_code:{oauth_code}", OAUTH_CODE_TTL_SECONDS, jwt_token)
+        await redis_conn.aclose()
+
+        frontend_url = f"{settings.APP_BASE_URL}/?oauth_code={oauth_code}"
+        return RedirectResponse(url=frontend_url, status_code=302)
 
 
 def _send_verification(user: User, session: Session) -> None:

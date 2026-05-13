@@ -1,52 +1,5 @@
 <template>
   <div class="min-h-screen bg-surface-950">
-    <!-- Header -->
-    <header class="border-b border-white/5 bg-surface-950/80 backdrop-blur-md sticky top-0 z-50">
-      <div class="max-w-4xl mx-auto px-6 py-5">
-        <div class="flex items-center justify-between">
-          <RouterLink to="/" class="group flex items-center gap-3 cursor-pointer">
-            <div class="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center shadow-lg shadow-primary-600/20">
-              <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div>
-              <h1 class="text-lg font-display font-semibold text-white tracking-tight group-hover:text-primary-400 transition-colors duration-200">
-                Tech & Games Blog
-              </h1>
-            </div>
-          </RouterLink>
-          <div class="flex items-center gap-3">
-            <form
-              class="hidden sm:flex items-center"
-              @submit.prevent="handleSearch"
-            >
-              <div class="relative">
-                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  v-model="searchQuery"
-                  type="search"
-                  placeholder="Search..."
-                  class="w-48 lg:w-64 bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                />
-              </div>
-            </form>
-            <nav class="hidden sm:flex items-center gap-1">
-              <RouterLink
-                to="/"
-                class="px-3 py-1.5 text-sm font-medium text-slate-400 hover:text-white rounded-md hover:bg-white/5 transition-all duration-200 cursor-pointer"
-                exact-active-class="text-primary-400 bg-primary-500/10"
-              >
-                Articles
-              </RouterLink>
-            </nav>
-          </div>
-        </div>
-      </div>
-    </header>
-
     <!-- Hero Section -->
     <section class="relative overflow-hidden border-b border-white/5">
       <div class="absolute inset-0 bg-primary-600/5" />
@@ -164,24 +117,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { fetchArticles } from '@/composables/useApi'
 import { useHead } from '@/composables/useHead'
 import { estimateReadingTime, formatReadingTime } from '@/composables/useReadingTime'
 import type { Article } from '@/types'
 
-const router = useRouter()
 const articles = ref<Article[]>([])
 const loading = ref(true)
 const error = ref('')
-const searchQuery = ref('')
-
-function handleSearch() {
-  const q = searchQuery.value.trim()
-  if (q) {
-    router.push({ path: '/search', query: { q } })
-  }
-}
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return ''

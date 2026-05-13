@@ -8,6 +8,7 @@ export const useAdminStore = defineStore('admin', () => {
   const token = ref(localStorage.getItem('admin_token') || '')
   const user = ref<User | null>(null)
   const profileLoaded = ref(false)
+  const isVerificationBannerDismissed = ref(false)
 
   function setToken(newToken: string) {
     token.value = newToken
@@ -48,5 +49,5 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  return { token, user, profileLoaded, setToken, clearToken, setUser, clearUser, fetchMe }
+  return { token, user, profileLoaded, isVerificationBannerDismissed, setToken, clearToken, setUser, clearUser, fetchMe }
 })

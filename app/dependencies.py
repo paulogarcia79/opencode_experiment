@@ -47,16 +47,43 @@ def _decode_and_validate_user(
             detail="Could not validate credentials",
         )
 
-    if not user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email not verified",
-        )
-
     return user
 
 
+def _check_unverified(user: User) -> None:
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified",
+        )
+
+
 def require_role(allowed_roles: list[str]):
+    async def _require_role(
+        token: str = Depends(oauth2_scheme),
+        session: Session = Depends(get_session),
+    ) -> User:
+        user = _decode_and_validate_user(token, session)
+
+        _check_unverified(user)
+
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Account is deactivated",
+            )
+
+        if user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action",
+            )
+
+        return user
+    return _require_role
+
+
+def require_role_allow_unverified(allowed_roles: list[str]):
     async def _require_role(
         token: str = Depends(oauth2_scheme),
         session: Session = Depends(get_session),

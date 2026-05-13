@@ -86,20 +86,29 @@ class TestInviteUser:
         assert created_user.is_verified is False
         assert created_user.setup_token_hash is not None
 
-    def test_invite_user_duplicate_email_returns_400(self, client: TestClient, session: Session):
+    def test_invite_existing_user_succeeds(self, client: TestClient, session: Session):
+        """Inviting an existing user updates their role and sends setup email."""
+        from unittest.mock import patch
         from app.routers.users import _invite_cooldown
         _invite_cooldown.clear()
 
         admin = _get_admin(session)
         headers = get_token_for_user(admin)
-        create_user(session, "existing@example.com")
+        existing = create_user(session, "existing@example.com", role="contributor")
 
-        response = client.post(
-            "/api/admin/users/invite",
-            headers=headers,
-            json={"email": "existing@example.com", "role": "contributor"}
-        )
-        assert response.status_code == 400
+        with patch("app.routers.users.send_invite_email") as mock_send:
+            response = client.post(
+                "/api/admin/users/invite",
+                headers=headers,
+                json={"email": "existing@example.com", "role": "editor"}
+            )
+            assert response.status_code == 200
+            mock_send.assert_called_once()
+
+        # Existing user's role should be updated
+        session.refresh(existing)
+        assert existing.role == "editor"
+        assert existing.setup_token_hash is not None
 
     def test_invite_user_cooldown(self, client: TestClient, session: Session):
         from unittest.mock import patch

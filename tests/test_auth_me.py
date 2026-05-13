@@ -62,14 +62,14 @@ def test_me_inactive_user_returns_401(client: TestClient, session: Session):
     assert "deactivated" in response.json()["detail"].lower()
 
 
-def test_me_unverified_user_returns_401(client: TestClient, session: Session):
+def test_me_unverified_user_returns_200(client: TestClient, session: Session):
     user = create_user(session, "unverified@example.com", is_verified=False)
     headers = get_token_headers(user)
 
     response = client.get("/api/auth/me", headers=headers)
 
-    assert response.status_code == 401
-    assert "verified" in response.json()["detail"].lower()
+    assert response.status_code == 200
+    assert response.json()["is_verified"] is False
 
 
 def test_me_admin_role(client: TestClient, session: Session):

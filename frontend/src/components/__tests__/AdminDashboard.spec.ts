@@ -34,7 +34,6 @@ describe('AdminDashboard', () => {
     expect(text).toContain('Media')
     expect(text).toContain('Tags')
     expect(text).toContain('Analytics')
-    expect(text).toContain('Settings')
     expect(text).toContain('Users')
   })
 })

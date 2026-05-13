@@ -15,13 +15,6 @@
       >
         Import
       </RouterLink>
-      <RouterLink
-        to="/contributor/settings"
-        exact-active-class="text-primary-400"
-        class="text-sm text-slate-500 hover:text-white transition-colors duration-200 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-white/5"
-      >
-        Settings
-      </RouterLink>
     </template>
   </DashboardLayout>
 </template>

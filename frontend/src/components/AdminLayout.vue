@@ -107,6 +107,6 @@ const store = useAdminStore()
 
 function logout() {
   store.clearToken()
-  router.push('/admin/login')
+  router.push('/')
 }
 </script>

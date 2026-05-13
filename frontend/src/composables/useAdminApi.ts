@@ -34,6 +34,38 @@ export async function exchangeOAuthCode(code: string) {
   return res.json() as Promise<{ token: string; type: string }>
 }
 
+export async function register(email: string, password: string, confirmPassword: string) {
+  const res = await fetch(`${API_BASE}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, confirm_password: confirmPassword }),
+  })
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Registration failed')
+  }
+
+  const data = await res.json()
+
+  // Duplicate email — response has no token
+  if (!data.token) {
+    return { duplicate: true }
+  }
+
+  // New registration — set token and fetch profile
+  const store = useAdminStore()
+  store.setToken(data.token)
+  await store.fetchMe()
+
+  // Detect X-Registration-New header
+  if (res.headers.get('X-Registration-New') === 'true') {
+    // Toast will be triggered by the calling component using this info
+  }
+
+  return data as { token: string; type: string }
+}
+
 export async function fetchAnalytics(range: string = '30d') {
   const res = await fetch(`${API_BASE}/api/admin/analytics?range=${range}`, {
     headers: getAuthHeaders(),
@@ -194,11 +226,10 @@ export async function setupAccount(token: string, password: string) {
   return res.json()
 }
 
-export async function resendVerification(email: string) {
+export async function resendVerification() {
   const res = await fetch(`${API_BASE}/api/auth/resend-verification`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
+    headers: getAuthHeaders(),
   })
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}))

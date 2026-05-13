@@ -2,19 +2,19 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 from app.database import get_session
-from app.dependencies import require_role
+from app.dependencies import require_role, require_role_allow_unverified
 from app.models.user import User
 from app.models.user_oauth_provider import UserOAuthProvider
 from app.services.oauth_service import OAuthService, SUPPORTED_PROVIDERS
 from app.config import settings
 
-router = APIRouter(prefix="/api/admin/settings", tags=["settings"], dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
+router = APIRouter(prefix="/api/admin/settings", tags=["settings"])
 
 
 @router.get("/accounts")
 def get_connected_accounts(
     session: Session = Depends(get_session),
-    user: User = Depends(require_role(["admin", "editor", "contributor"])),
+    user: User = Depends(require_role_allow_unverified(["admin", "editor", "contributor"])),
 ):
     """Get user's connected OAuth accounts."""
     providers = session.exec(

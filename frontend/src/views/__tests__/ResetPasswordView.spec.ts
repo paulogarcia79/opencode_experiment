@@ -92,6 +92,6 @@ describe('ResetPasswordView', () => {
     await wrapper.find('form').trigger('submit.prevent')
     await flushPromises()
 
-    expect(mockPush).toHaveBeenCalledWith('/admin/login')
+    expect(mockPush).toHaveBeenCalledWith('/auth')
   })
 })

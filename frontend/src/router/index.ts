@@ -4,11 +4,10 @@ import HomeView from '@/views/HomeView.vue'
 import ArticleView from '@/views/ArticleView.vue'
 import ConfirmView from '@/views/ConfirmView.vue'
 import UnsubscribeView from '@/views/UnsubscribeView.vue'
-import AdminLoginView from '@/views/AdminLoginView.vue'
+import AuthView from '@/views/AuthView.vue'
 import ForgotPasswordView from '@/views/ForgotPasswordView.vue'
 import ResetPasswordView from '@/views/ResetPasswordView.vue'
 import VerifyEmailView from '@/views/VerifyEmailView.vue'
-import SetupView from '@/views/SetupView.vue'
 import AdminSettingsView from '@/views/AdminSettingsView.vue'
 import AdminDashboard from '@/components/AdminDashboard.vue'
 import EditorDashboard from '@/components/EditorDashboard.vue'
@@ -31,7 +30,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     // Public routes
-    { path: '/', name: 'home', component: HomeView },
+    { path: '/', name: 'home', component: HomeView, meta: { public: true } },
     { path: '/articles/:slug', name: 'article', component: ArticleView },
     { path: '/confirm', name: 'confirm', component: ConfirmView },
     { path: '/unsubscribe', name: 'unsubscribe', component: UnsubscribeView },
@@ -39,11 +38,10 @@ const router = createRouter({
     { path: '/tags/:slug', name: 'tag-articles', component: TagArticlesView },
 
     // Auth pages
-    { path: '/admin/login', name: 'admin-login', component: AdminLoginView, meta: { public: true } },
-    { path: '/admin/forgot-password', name: 'admin-forgot-password', component: ForgotPasswordView, meta: { public: true } },
-    { path: '/admin/reset-password', name: 'admin-reset-password', component: ResetPasswordView, meta: { public: true } },
-    { path: '/admin/verify-email', name: 'admin-verify-email', component: VerifyEmailView, meta: { public: true } },
-    { path: '/admin/setup', name: 'admin-setup', component: SetupView, meta: { public: true } },
+    { path: '/auth', name: 'auth', component: AuthView, meta: { public: true } },
+    { path: '/auth/forgot-password', name: 'auth-forgot-password', component: ForgotPasswordView, meta: { public: true } },
+    { path: '/auth/reset-password', name: 'auth-reset-password', component: ResetPasswordView, meta: { public: true } },
+    { path: '/verify-email', name: 'verify-email', component: VerifyEmailView, meta: { public: true } },
 
     // Forbidden
     { path: '/forbidden', name: 'forbidden', component: ForbiddenPage, meta: { public: true } },
@@ -102,22 +100,15 @@ const router = createRouter({
 router.beforeEach(async (to, _from, next) => {
   const store = useAdminStore()
 
-  // Public routes — allow through
-  if (to.meta.public) {
-    next()
-    return
-  }
-
-  // Auth required but no token — redirect to login
-  if (to.meta.requiresAuth && !store.token) {
-    next('/admin/login')
-    return
-  }
-
-  // Already logged in and visiting login — redirect to dashboard
-  if (to.path === '/admin/login' && store.token) {
+  // Already logged in and visiting auth — redirect based on verification state
+  if (to.path === '/auth' && store.token) {
     if (!store.profileLoaded) {
       await store.fetchMe()
+    }
+    // Unverified users go to landing page (verification banner shows there)
+    if (store.user && !store.user.is_verified) {
+      next('/')
+      return
     }
     const role = store.user?.role ?? 'contributor'
     const dashboard: Record<string, string> = {
@@ -129,11 +120,23 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
+  // Public routes — allow through
+  if (to.meta.public) {
+    next()
+    return
+  }
+
+  // Auth required but no token — redirect to auth
+  if (to.meta.requiresAuth && !store.token) {
+    next('/auth')
+    return
+  }
+
   // Load user profile if needed
   if (to.meta.requiresAuth && store.token && !store.profileLoaded) {
     await store.fetchMe()
     if (!store.token) {
-      next('/admin/login')
+      next('/auth')
       return
     }
   }

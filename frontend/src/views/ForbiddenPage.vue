@@ -26,6 +26,6 @@ const roleToDashboard: Record<string, string> = {
 }
 
 const dashboardLink = computed(() => {
-  return roleToDashboard[store.user?.role ?? ''] || '/admin/login'
+  return roleToDashboard[store.user?.role ?? ''] || '/'
 })
 </script>

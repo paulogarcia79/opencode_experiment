@@ -1,14 +1,14 @@
 import time
 import secrets
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models.user import User
-from app.schemas import LoginRequest, ForgotPasswordRequest, ResetPasswordRequest, SetupRequest
-from app.services.auth_service import verify_password, create_access_token, generate_reset_token, validate_reset_token, reset_password, pwd_context
+from app.schemas import LoginRequest, RegisterRequest, ForgotPasswordRequest, ResetPasswordRequest, SetupRequest
+from app.services.auth_service import verify_password, create_access_token, generate_reset_token, validate_reset_token, reset_password, pwd_context, get_password_hash
 from app.services.email_service import send_password_reset_email, send_verification_email
-from app.dependencies import require_role
+from app.dependencies import require_role, require_role_allow_unverified
 from app.services.user_management_service import validate_setup_token, complete_setup
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 # In-memory cooldown: email -> last_request_timestamp
 _forgot_password_cooldown: dict[str, float] = {}
 _verification_cooldown: dict[str, float] = {}
+_registration_cooldown: dict[str, float] = {}
 COOLDOWN_SECONDS = 60
 
 @router.post("/login")
@@ -40,8 +41,75 @@ def login(request: LoginRequest, session: Session = Depends(get_session)):
     access_token = create_access_token(data={"sub": str(user.id), "token_version": user.token_version})
     return {"token": access_token, "type": "bearer"}
 
+
+@router.post("/register")
+def register(
+    request: RegisterRequest,
+    response: Response,
+    req: Request,
+    session: Session = Depends(get_session),
+):
+    # If token is present, reject authenticated users
+    auth_header = req.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Already logged in. Log out to create a new account.",
+        )
+
+    email = request.email.lower().strip()
+
+    # Check if user already exists — silent success, no token (before cooldown to avoid
+    # penalizing legitimate re-attempts)
+    existing_user = session.exec(select(User).where(User.email == email)).first()
+    if existing_user:
+        return {"detail": "If that email is not already registered, check your inbox."}
+
+    # IP-based cooldown (only for genuinely new registrations)
+    client_ip = req.client.host if req.client else "unknown"
+    now = time.time()
+    last_request = _registration_cooldown.get(client_ip)
+    if last_request and (now - last_request) < COOLDOWN_SECONDS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Please wait before registering again.",
+        )
+
+    # Create the user
+    user = User(
+        email=email,
+        hashed_password=get_password_hash(request.password),
+        role="contributor",
+        is_active=True,
+        is_verified=False,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    # Generate verification token and send email
+    plaintext_token = secrets.token_urlsafe(32)
+    user.verification_token_hash = pwd_context.hash(plaintext_token)
+    user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+    session.add(user)
+    session.commit()
+
+    send_verification_email(user.email, plaintext_token, role=user.role)
+
+    # Update IP cooldown
+    _registration_cooldown[client_ip] = now
+
+    # Generate JWT
+    access_token = create_access_token(
+        data={"sub": str(user.id), "token_version": user.token_version}
+    )
+
+    response.headers["X-Registration-New"] = "true"
+    return {"token": access_token, "type": "bearer"}
+
+
 @router.get("/me")
-def get_me(user: User = Depends(require_role(["admin", "editor", "contributor"]))):
+def get_me(user: User = Depends(require_role_allow_unverified(["admin", "editor", "contributor"]))):
     return {
         "id": str(user.id),
         "email": user.email,
@@ -159,32 +227,29 @@ def verify_email(request: dict, session: Session = Depends(get_session)):
 
 
 @router.post("/resend-verification")
-def resend_verification(request: dict, session: Session = Depends(get_session)):
-    email = request.get("email", "").lower().strip()
-    
+def resend_verification(
+    user: User = Depends(require_role_allow_unverified(["admin", "editor", "contributor"])),
+    session: Session = Depends(get_session),
+):
     # Check cooldown
     now = time.time()
-    last_request = _verification_cooldown.get(email)
+    last_request = _verification_cooldown.get(user.email)
     if last_request and (now - last_request) < COOLDOWN_SECONDS:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Please wait before requesting another verification email.",
         )
-    
-    user = session.exec(select(User).where(User.email == email)).first()
-    
-    if user and not user.is_verified:
-        # Generate new verification token
-        plaintext = secrets.token_urlsafe(32)
-        hashed = pwd_context.hash(plaintext)
-        user.verification_token_hash = hashed
-        user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
-        session.add(user)
-        session.commit()
-        
-        send_verification_email(user.email, plaintext)
-    
-    # Always update cooldown (no enumeration)
-    _verification_cooldown[email] = now
-    
-    return {"message": "If an unverified account exists with that email, a verification link has been sent"}
+
+    # Generate new verification token and send email
+    plaintext = secrets.token_urlsafe(32)
+    hashed = pwd_context.hash(plaintext)
+    user.verification_token_hash = hashed
+    user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+    session.add(user)
+    session.commit()
+
+    send_verification_email(user.email, plaintext, role=user.role)
+
+    _verification_cooldown[user.email] = now
+
+    return {"message": "A verification link has been sent to your email."}
