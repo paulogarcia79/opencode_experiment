@@ -161,6 +161,10 @@ onMounted(async () => {
   try {
     const fetched = await fetchArticle(route.params.slug as string)
     article.value = fetched
+    
+    // Track view in the background
+    fetch(`/api/articles/${fetched.slug}/view`, { method: 'POST' }).catch(console.error)
+
     const baseUrl = window.location.origin
     useHead({
       title: fetched.title,

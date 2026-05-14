@@ -10,8 +10,22 @@ import hashlib
 
 
 class TestArticleViewTracking:
-    def test_get_published_article_records_view(self, client: TestClient, session: Session, admin_token):
+    def test_post_view_endpoint_records_view(self, client: TestClient, session: Session, admin_token):
         article = create_article(session, "Viewed Article", {"type": "doc"})
+        update_article(session, article, status="published", published_at=datetime.now(timezone.utc))
+
+        response = client.post(f"/api/articles/{article.slug}/view")
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok"}
+
+        views = session.exec(
+            select(ArticleView).where(ArticleView.article_id == article.id)
+        ).all()
+        assert len(views) == 1
+        assert views[0].article_id == article.id
+
+    def test_get_published_article_no_longer_records_view(self, client: TestClient, session: Session, admin_token):
+        article = create_article(session, "Not Viewed Article", {"type": "doc"})
         update_article(session, article, status="published", published_at=datetime.now(timezone.utc))
 
         response = client.get(f"/api/articles/{article.slug}")
@@ -20,19 +34,18 @@ class TestArticleViewTracking:
         views = session.exec(
             select(ArticleView).where(ArticleView.article_id == article.id)
         ).all()
-        assert len(views) == 1
-        assert views[0].article_id == article.id
+        assert len(views) == 0
 
     def test_duplicate_view_within_24h_not_recorded(self, client: TestClient, session: Session, admin_token):
         article = create_article(session, "Dup Test", {"type": "doc"})
         update_article(session, article, status="published", published_at=datetime.now(timezone.utc))
 
         # First view
-        response = client.get(f"/api/articles/{article.slug}")
+        response = client.post(f"/api/articles/{article.slug}/view")
         assert response.status_code == 200
 
         # Second view (same IP, within 24h)
-        response = client.get(f"/api/articles/{article.slug}")
+        response = client.post(f"/api/articles/{article.slug}/view")
         assert response.status_code == 200
 
         count = session.exec(
@@ -54,7 +67,7 @@ class TestArticleViewTracking:
         session.commit()
 
         # New view should be recorded
-        response = client.get(f"/api/articles/{article.slug}")
+        response = client.post(f"/api/articles/{article.slug}/view")
         assert response.status_code == 200
 
         count = session.exec(
@@ -68,7 +81,7 @@ class TestArticleViewTracking:
         update_article(session, article, status="published", published_at=datetime.now(timezone.utc))
 
         # First view from IP 1
-        response = client.get(f"/api/articles/{article.slug}")
+        response = client.post(f"/api/articles/{article.slug}/view")
         assert response.status_code == 200
 
         # Manually insert a view from a different IP
@@ -88,7 +101,7 @@ class TestArticleViewTracking:
     def test_draft_article_no_view_recorded(self, client: TestClient, session: Session, admin_token):
         article = create_article(session, "Draft", {"type": "doc"})
 
-        response = client.get(f"/api/articles/{article.slug}")
+        response = client.post(f"/api/articles/{article.slug}/view")
         assert response.status_code == 404
 
         count = session.exec(

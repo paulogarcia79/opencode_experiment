@@ -85,13 +85,21 @@ def get_article_endpoint(request: Request, slug: str, session: Session = Depends
 
     if article.status != "published" and not can_view_non_published:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
-    client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1").split(",")[0].strip()
-    record_view(session, article.id, client_ip)
-    session.commit()
     session.refresh(article)
     response = article.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
     return response
+
+@router.post("/api/articles/{slug}/view")
+def record_view_endpoint(request: Request, slug: str, session: Session = Depends(get_session)):
+    article = get_article_by_slug(session, slug)
+    if not article or article.status != "published":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+        
+    client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1").split(",")[0].strip()
+    record_view(session, article.id, client_ip)
+    session.commit()
+    return {"status": "ok"}
 
 @router.get("/feed.xml")
 def rss_feed_endpoint(session: Session = Depends(get_session)):
