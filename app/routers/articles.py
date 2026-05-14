@@ -68,23 +68,32 @@ def search_articles_endpoint(request: Request, q: Optional[str] = None, session:
 @limiter.limit(settings.RATE_LIMIT_ARTICLE_VIEW)
 def get_article_endpoint(request: Request, slug: str, session: Session = Depends(get_session)):
     article = get_article_by_slug(session, slug)
+    if not article or article.status != "published":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+
+    session.refresh(article)
+    response = article.model_dump()
+    response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
+    return response
+
+@router.get("/api/admin/articles/preview/{slug}", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
+def preview_article_endpoint(request: Request, slug: str, session: Session = Depends(get_session)):
+    article = get_article_by_slug(session, slug)
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
 
-    # Allow admin/editor/author to view non-published articles
-    can_view_non_published = False
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
         try:
             token = auth[7:]
             user = _decode_and_validate_user(token, session)
-            if user.role in ("admin", "editor") or article.author_id == user.id:
-                can_view_non_published = True
-        except HTTPException:
-            pass
+            if user.role not in ("admin", "editor") and article.author_id != user.id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to preview this article")
+        except HTTPException as e:
+            raise e
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
 
-    if article.status != "published" and not can_view_non_published:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
     session.refresh(article)
     response = article.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]

@@ -22,6 +22,22 @@ export async function fetchArticle(slug: string) {
   return res.json()
 }
 
+export async function fetchArticlePreview(slug: string) {
+  const headers: Record<string, string> = {}
+  try {
+    const { useAdminStore } = await import('@/stores/admin')
+    const store = useAdminStore()
+    if (store.token) {
+      headers.Authorization = `Bearer ${store.token}`
+    }
+  } catch {
+    // store not available
+  }
+  const res = await fetch(`${API_BASE}/api/admin/articles/preview/${slug}`, { headers })
+  if (!res.ok) throw new Error('Preview not found or unauthorized')
+  return res.json()
+}
+
 export async function subscribeToNewsletter(email: string) {
   const res = await fetch(`${API_BASE}/api/subscribers`, {
     method: 'POST',

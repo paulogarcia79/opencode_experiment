@@ -5,7 +5,7 @@ import ArticleView from '@/views/ArticleView.vue'
 const mockParams = { slug: 'test-article' }
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: mockParams }),
+  useRoute: () => ({ params: mockParams, query: {} }),
 }))
 
 vi.mock('@/stores/admin', () => ({

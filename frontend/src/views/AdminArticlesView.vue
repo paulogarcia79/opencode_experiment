@@ -129,7 +129,7 @@
             </RouterLink>
             <RouterLink
               v-if="!row._isOwn && row._canEdit"
-              :to="`/articles/${row.slug}`"
+              :to="`/articles/${row.slug}?preview=true`"
               class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-md transition-colors duration-200 cursor-pointer"
             >
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

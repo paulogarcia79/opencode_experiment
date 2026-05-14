@@ -230,19 +230,30 @@ class TestArticlesPerformanceList:
 
 
 class TestNonPublishedArticleAccess:
-    def test_non_published_returns_404_for_public(self, client: TestClient, session: Session):
+    def test_non_published_returns_404_on_public_endpoint(self, client: TestClient, session: Session, admin_token):
         article = create_article(session, "Secret Draft", {"type": "doc"})
+        
+        # Public
         response = client.get(f"/api/articles/{article.slug}")
         assert response.status_code == 404
+        
+        # Admin still gets 404 on public endpoint
+        response = client.get(f"/api/articles/{article.slug}", headers=admin_token)
+        assert response.status_code == 404
 
-    def test_non_published_allowed_for_editor(self, client: TestClient, session: Session):
+    def test_non_published_preview_allowed_for_editor(self, client: TestClient, session: Session):
         from tests.conftest import create_user_token
         article = create_article(session, "Editor Sees Draft", {"type": "doc"})
         editor_headers = create_user_token(session, "editor-sees@test.com", "editor")
-        response = client.get(f"/api/articles/{article.slug}", headers=editor_headers)
+        response = client.get(f"/api/admin/articles/preview/{article.slug}", headers=editor_headers)
         assert response.status_code == 200
 
-    def test_non_published_allowed_for_admin(self, client: TestClient, session: Session, admin_token):
+    def test_non_published_preview_allowed_for_admin(self, client: TestClient, session: Session, admin_token):
         article = create_article(session, "Admin Sees Draft", {"type": "doc"})
-        response = client.get(f"/api/articles/{article.slug}", headers=admin_token)
+        response = client.get(f"/api/admin/articles/preview/{article.slug}", headers=admin_token)
         assert response.status_code == 200
+
+    def test_preview_returns_401_for_public(self, client: TestClient, session: Session):
+        article = create_article(session, "Secret Draft Preview", {"type": "doc"})
+        response = client.get(f"/api/admin/articles/preview/{article.slug}")
+        assert response.status_code == 401

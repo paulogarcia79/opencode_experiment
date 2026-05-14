@@ -127,7 +127,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAdminStore } from '@/stores/admin'
-import { fetchArticle } from '@/composables/useApi'
+import { fetchArticle, fetchArticlePreview } from '@/composables/useApi'
 import { useHead } from '@/composables/useHead'
 import { estimateReadingTime, formatReadingTime } from '@/composables/useReadingTime'
 import TipTapRenderer from '@/components/TipTapRenderer.vue'
@@ -159,11 +159,17 @@ function formatDate(dateStr: string): string {
 
 onMounted(async () => {
   try {
-    const fetched = await fetchArticle(route.params.slug as string)
+    const isPreview = route.query.preview === 'true'
+    const fetched = isPreview 
+      ? await fetchArticlePreview(route.params.slug as string)
+      : await fetchArticle(route.params.slug as string)
+    
     article.value = fetched
     
-    // Track view in the background
-    fetch(`/api/articles/${fetched.slug}/view`, { method: 'POST' }).catch(console.error)
+    // Track view in the background only if not previewing
+    if (!isPreview) {
+      fetch(`/api/articles/${fetched.slug}/view`, { method: 'POST' }).catch(console.error)
+    }
 
     const baseUrl = window.location.origin
     useHead({
