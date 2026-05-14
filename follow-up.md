@@ -56,7 +56,7 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 - [ ] **TipTapEditor tests** — Deferred due to @tiptap/vue-3 mocking complexity
 - [ ] **E2E tests** — Playwright tests for critical user flows
 - [x] **API rate limiting** — Protect public endpoints from abuse (slowapi with Redis backend, per-IP limits: search 10/min, subscribe 3/min, article views 30/min, admin bypass, X-Forwarded-For support, configurable via env vars)
-- [ ] **Caching layer** — Redis caching for published articles and lists
+- [x] **Caching layer** — Redis caching for published articles and lists (fastapi-cache2, event-driven invalidation)
 - [ ] **CDN integration** — CloudFront/Cloudflare for static assets
 - [ ] **Backup strategy** — Automated PostgreSQL backups
 - [ ] **Monitoring / alerting** — Uptime monitoring, error tracking (Sentry)
@@ -68,5 +68,5 @@ Items discussed during the `blog-newsletter-platform` change that were intention
 ## Notes
 
 - Priority order should be determined by user needs, not this list
-- Each item above should become its own OpenSpec change when picked up
+- Each item above should become its own prd when picked up
 - Some items are quick patches (RSS feed), others are architectural (background queue)
