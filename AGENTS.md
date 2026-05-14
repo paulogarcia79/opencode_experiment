@@ -2,7 +2,16 @@
 
 ## What This Repo Is
 
-A **Blog + Newsletter Platform** with a real application stack: FastAPI backend, Vue 3 frontend, PostgreSQL, Docker Compose, and Nginx. It also carries an **OpenSpec planning layer** for spec-driven development.
+A **Blog + Newsletter Platform** with a real application stack: FastAPI backend, Vue 3 frontend, PostgreSQL, Docker Compose, and Nginx. This repository operates using a multi-agent, Spec-Driven Development methodology.
+
+## Subagent Roster
+
+This repository utilizes specialized subagents located in `.opencode/agents/` (using YAML frontmatter definitions). Tasks must be delegated to these agents according to the Implementation Flow.
+
+- **Agentic Architect (`architect.md`):** Owns the `/grill-me` and PRD generation phases. Defines data contracts, evaluates dependency choices, and ensures structural integrity without writing implementation code.
+- **TDD Specialist (`tdd.md`):** Drives the Ralph loop (`./ralph/afk.sh`) and manual implementation. Strictly enforces the Red-Green-Refactor cycle using `pytest` and `vitest`.
+- **Security Scrutineer (`security.md`):** Operates alongside the `/qa-checklist` phase. Audits dependency changes in `uv` and `npm`, and scans for hardcoded secrets or vulnerabilities.
+- **Documentation Agent (`docs.md`):** Triggered post-implementation to sync Markdown files, API specs, and inline documentation before final commits.
 
 ## Implementation Flow (User-Mandated)
 
@@ -10,31 +19,38 @@ A **Blog + Newsletter Platform** with a real application stack: FastAPI backend,
 
 Always follow this sequence for new features:
 
-1. **`/grill-me [feature]`** or **`/grill-with-docs`** — Stress-test the plan with the user until decisions crystallize
-   - **DO NOT implement code, create files, or make changes during this phase**
-   - Ask questions one at a time, resolve design decisions, explore codebase
-   - Capture resolved decisions as you go
-   - When grilling is complete, proceed to step 2
+1. **`/grill-me [feature]`** or **`/grill-with-docs`** (Assigned to: **Agentic Architect**)
+   - Stress-test the plan with the user until decisions crystallize.
+   - **DO NOT implement code, create files, or make changes during this phase.**
+   - Ask questions one at a time, resolve design decisions, explore codebase.
+   - Capture resolved decisions as you go.
+   - When grilling is complete, proceed to step 2.
 
-2. **`/to-prd`** — Convert the grilled plan into a PRD and publish to `prd/PRD-<name>.md`
-   - Use the resolved decisions from the grilling session as input
-   - Wait for user review and approval before proceeding
+2. **`/to-prd`** (Assigned to: **Agentic Architect**)
+   - Convert the grilled plan into a PRD and publish to `prd/PRD-<name>.md`.
+   - Use the resolved decisions from the grilling session as input.
+   - Wait for user review and approval before proceeding.
 
-3. **`/to-issues`** — Break the PRD into independently-grabbable issues (tracer-bullet vertical slices)
-   - Issues are created in `issues/<number>-<name>.md`
-   - Each issue should be independently implementable
+3. **`/to-issues`** (Assigned to: **TDD Specialist** or Orchestrator)
+   - Break the PRD into independently-grabbable issues (tracer-bullet vertical slices).
+   - Issues are created in `issues/<number>-<name>.md`.
+   - Each issue should be independently implementable.
 
-4. **TDD** — Write tests before logic (pytest backend, Vitest frontend)
-   - Use the **Ralph loop** (`./ralph/afk.sh`) for autonomous implementation, OR the **`/tdd`** skill for manual implementation
-   - Only now do you start implementing code
-   - Pick issues from `issues/` and work through them
+4. **TDD Implementation** (Assigned to: **TDD Specialist**)
+   - Write tests before logic (pytest backend, Vitest frontend).
+   - Use the **Ralph loop** (`./ralph/afk.sh`) for autonomous implementation, OR the **`/tdd`** skill for manual implementation.
+   - Only now do you start implementing code.
+   - Pick issues from `issues/` and work through them.
 
-5. **`/qa-checklist`** — After implementation, generate a manual QA checklist from the PRD, issues, tests, and code
-   - This is ALWAYS the final step before commit
-   - User must review and approve the QA checklist
+5. **`/qa-checklist` & Security Scan** (Assigned to: **Security Scrutineer**)
+   - After implementation, generate a manual QA checklist from the PRD, issues, tests, and code.
+   - Perform a passive scan for exposed secrets or dependency risks.
+   - This is ALWAYS the final step before commit.
+   - User must review and approve the QA checklist.
 
-6. **Commit changes** — After QA checklist approval, commit the implementation
-   - Follow git safety protocols (never force push, never skip hooks)
+6. **Documentation Sync & Commit** (Assigned to: **Documentation Agent**)
+   - After QA checklist approval, sync `README.md`, API schemas, and inline comments.
+   - Commit the implementation following git safety protocols (never force push, never skip hooks).
 
 ### Workflow Enforcement Rules
 
@@ -48,7 +64,7 @@ Always follow this sequence for new features:
 ## Tech Stack
 
 - **Backend:** Python ≥3.14, FastAPI, SQLModel, PostgreSQL, Alembic, Resend (email)
-- **Frontend:** Vue 3 (Composition API), TypeScript, Tailwind CSS, Vite, Vitest, TipTap editor
+- **Frontend:** Vue 3 (Composition API), TypeScript, Tailwind CSS, Vite, Vitest. **(Allow AI agents to dynamically select the optimal utilities, libraries, and rich-text editors based on specifications).**
 - **Infra:** Docker Compose (dev + prod profiles), Nginx (port 80/443 only entry point)
 - **Package Managers:** `uv` (Python), `npm` (Node)
 
@@ -76,13 +92,6 @@ just build-front  # Type-check + build (vue-tsc && vite build)
 just migration <name>   # Generate Alembic migration
 just db-reset           # Drop all tables and re-run migrations
 
-# OpenSpec workflow
-openspec new change "<kebab-case>"
-openspec status --change "<name>" --json
-openspec instructions apply --change "<name>" --json
-openspec list --json
-```
-
 ## Architecture
 
 ### Entry Points
@@ -109,8 +118,6 @@ openspec list --json
 - **Proposals must be under 500 words** and always include a "Non-goals" section.
 - **Task chunks max 2 hours.** Break work accordingly.
 - **Do NOT copy `<context>`, `<rules>`, or `<project_context>` blocks** into artifact files. These are agent constraints, not file content.
-- **In explore mode (`/opsx-explore`), NEVER write application code.** OpenSpec artifacts only.
-- **Always read `contextFiles` from `openspec instructions apply --json`** before implementing. Do not assume artifact filenames.
 - **Keep changes minimal and scoped** to the current task.
 - **During grilling sessions (`/grill-me` or `/grill-with-docs`):**
   - NEVER write application code, create files, or make changes
@@ -158,11 +165,6 @@ frontend/              # Vue 3 frontend
 prd/                   # Product requirement documents
 issues/                # Active AFK issues
   done/                # Completed issues
-openspec/              # OpenSpec planning layer
-  config.yaml          # Project context, tech stack, rules
-  specs/               # Main capability specs (persistent)
-  changes/             # Active changes
-    archive/           # Completed changes (date-prefixed)
 ralph/                 # Autonomous task loop scripts
 design-system/         # UI design specs
 ```
@@ -171,7 +173,7 @@ design-system/         # UI design specs
 
 Skills are triggered by typing `/<skill-name>` in chat.
 
-**Repo-local** (`.opencode/skills/`): `openspec-propose`, `openspec-apply-change`, `openspec-explore`, `openspec-archive-change`, `graphify`, `api-design`, `backend-patterns`, `coding-standards`, `e2e-testing`, `eval-harness`, `frontend-patterns`, `frontend-slides`, `security-review`, `strategic-compact`, `tdd-workflow`, `ui-ux-pro-max`, `verification-loop`, `qa-checklist`
+**Repo-local** (`.opencode/skills/`): `graphify`, `api-design`, `backend-patterns`, `coding-standards`, `e2e-testing`, `eval-harness`, `frontend-patterns`, `frontend-slides`, `security-review`, `strategic-compact`, `tdd-workflow`, `ui-ux-pro-max`, `verification-loop`, `qa-checklist`
 
 **External** (`.agents/skills/`): `grill-me`, `grill-with-docs`, `improve-codebase-architecture`, `tdd`, `to-issues`, `to-prd`
 
