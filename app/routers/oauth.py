@@ -194,7 +194,10 @@ async def oauth_callback(request: Request, session: Session = Depends(get_sessio
         oauth_code = secrets.token_urlsafe(32)
         redis_conn = _get_redis()
         await redis_conn.setex(f"oauth_code:{oauth_code}", OAUTH_CODE_TTL_SECONDS, jwt_token)
-        await redis_conn.aclose()
+        if hasattr(redis_conn, "aclose"):
+            await redis_conn.aclose()
+        else:
+            await redis_conn.close()
 
         frontend_url = f"{settings.APP_BASE_URL}/?oauth_code={oauth_code}"
         return RedirectResponse(url=frontend_url, status_code=302)
@@ -227,7 +230,10 @@ async def oauth_callback(request: Request, session: Session = Depends(get_sessio
         oauth_code = secrets.token_urlsafe(32)
         redis_conn = _get_redis()
         await redis_conn.setex(f"oauth_code:{oauth_code}", OAUTH_CODE_TTL_SECONDS, jwt_token)
-        await redis_conn.aclose()
+        if hasattr(redis_conn, "aclose"):
+            await redis_conn.aclose()
+        else:
+            await redis_conn.close()
 
         frontend_url = f"{settings.APP_BASE_URL}/?oauth_code={oauth_code}"
         return RedirectResponse(url=frontend_url, status_code=302)
@@ -257,7 +263,10 @@ async def oauth_exchange(request: OAuthExchangeRequest):
     key = f"oauth_code:{request.code}"
     jwt_token = await redis_conn.get(key)
     if not jwt_token:
-        await redis_conn.aclose()
+        if hasattr(redis_conn, "aclose"):
+            await redis_conn.aclose()
+        else:
+            await redis_conn.close()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired OAuth code",

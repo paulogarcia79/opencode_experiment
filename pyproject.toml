@@ -27,6 +27,7 @@ dependencies = [
     "python-frontmatter>=1.1.0",
     "slowapi>=0.1.9",
     "authlib>=1.7.2",
+    "fastapi-cache2[redis]>=0.2.1",
 ]
 
 [project.optional-dependencies]

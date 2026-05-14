@@ -2,7 +2,9 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Response, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response, UploadFile, File, Request, BackgroundTasks
+from fastapi_cache.decorator import cache
+from fastapi_cache import FastAPICache
 from sqlmodel import Session, select, func
 from app.database import get_session
 from app.dependencies import require_role, require_role_allow_unverified, get_arq_pool, _decode_and_validate_user
@@ -38,9 +40,15 @@ from app.limiter import limiter
 
 router = APIRouter()
 
+async def clear_article_caches():
+    await FastAPICache.clear(namespace="articles:public")
+    await FastAPICache.clear(namespace="articles:detail")
+    await FastAPICache.clear(namespace="articles:feed")
+
 # Public endpoints
 
 @router.get("/api/articles", response_model=list[Article])
+@cache(expire=3600, namespace="articles:public")
 def list_articles_endpoint(skip: int = 0, limit: int = 50, session: Session = Depends(get_session)):
     from sqlmodel import select
     from sqlalchemy.orm import selectinload
@@ -66,6 +74,7 @@ def search_articles_endpoint(request: Request, q: Optional[str] = None, session:
 
 @router.get("/api/articles/{slug}")
 @limiter.limit(settings.RATE_LIMIT_ARTICLE_VIEW)
+@cache(expire=3600, namespace="articles:detail")
 def get_article_endpoint(request: Request, slug: str, session: Session = Depends(get_session)):
     article = get_article_by_slug(session, slug)
     if not article or article.status != "published":
@@ -111,6 +120,7 @@ def record_view_endpoint(request: Request, slug: str, session: Session = Depends
     return {"status": "ok"}
 
 @router.get("/feed.xml")
+@cache(expire=3600, namespace="articles:feed")
 def rss_feed_endpoint(session: Session = Depends(get_session)):
     """Generate an Atom RSS feed of published articles."""
     articles = list_published_articles(session)
@@ -209,6 +219,7 @@ Sitemap: {base_url}/sitemap.xml
 @router.post("/api/admin/articles", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def create_article_endpoint(
     data: ArticleCreate,
+    background_tasks: BackgroundTasks,
     user=Depends(require_role(["admin", "editor", "contributor"])),
     session: Session = Depends(get_session),
 ):
@@ -222,6 +233,7 @@ def create_article_endpoint(
         data.scheduled_for,
         author_id=user.id,
     )
+    background_tasks.add_task(clear_article_caches)
     response = article.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
     if article.author:
@@ -401,6 +413,7 @@ def submit_review_endpoint(
 @router.post("/api/admin/articles/{article_id}/approve", dependencies=[Depends(require_role(["admin", "editor"]))])
 def approve_review_endpoint(
     article_id: UUID,
+    background_tasks: BackgroundTasks,
     user=Depends(require_role(["admin", "editor"])),
     session: Session = Depends(get_session),
 ):
@@ -421,6 +434,7 @@ def approve_review_endpoint(
     session.add(review_action)
     session.commit()
     session.refresh(article)
+    background_tasks.add_task(clear_article_caches)
     response = article.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
     if article.author:
@@ -432,6 +446,7 @@ def approve_review_endpoint(
 def reject_review_endpoint(
     article_id: UUID,
     data: ReviewRejectRequest,
+    background_tasks: BackgroundTasks,
     user=Depends(require_role(["admin", "editor"])),
     session: Session = Depends(get_session),
 ):
@@ -452,6 +467,7 @@ def reject_review_endpoint(
     session.add(review_action)
     session.commit()
     session.refresh(article)
+    background_tasks.add_task(clear_article_caches)
     response = article.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in article.tags]
     if article.author:
@@ -527,11 +543,13 @@ async def update_article_endpoint(
     if should_send_newsletter:
         await send_newsletter_for_article(arq_pool, updated, defer_until=updated.scheduled_for)
     
+    await clear_article_caches()
     return response_data
 
 @router.delete("/api/articles/{article_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def delete_article_endpoint(
     article_id: UUID,
+    background_tasks: BackgroundTasks,
     user=Depends(require_role(["admin", "editor", "contributor"])),
     session: Session = Depends(get_session),
 ):
@@ -546,10 +564,12 @@ def delete_article_endpoint(
         )
     
     delete_article(session, article)
+    background_tasks.add_task(clear_article_caches)
     return None
 
 @router.post("/api/admin/articles/import", response_model=ImportResult, dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 async def import_markdown_endpoint(
+    background_tasks: BackgroundTasks,
     files: list[UploadFile] = File(...),
     user=Depends(require_role(["admin", "editor", "contributor"])),
     session: Session = Depends(get_session),
@@ -559,7 +579,9 @@ async def import_markdown_endpoint(
     for f in files:
         content = await f.read()
         file_contents.append((f.filename, content))
-    return import_markdown_files(session, file_contents, author_id=user.id)
+    result = import_markdown_files(session, file_contents, author_id=user.id)
+    background_tasks.add_task(clear_article_caches)
+    return result
 
 @router.post("/api/admin/articles/autosave", dependencies=[Depends(require_role(["admin", "editor", "contributor"]))])
 def autosave_create_article_endpoint(
@@ -585,6 +607,7 @@ def autosave_create_article_endpoint(
 def autosave_article_endpoint(
     article_id: UUID,
     data: ArticleAutoSave,
+    background_tasks: BackgroundTasks,
     user=Depends(require_role(["admin", "editor", "contributor"])),
     session: Session = Depends(get_session),
 ):
@@ -615,6 +638,9 @@ def autosave_article_endpoint(
         update_data["published_at"] = None
 
     updated = update_article(session, article, **update_data)
+    
+    if updated.status == "published":
+        background_tasks.add_task(clear_article_caches)
 
     response_data = updated.model_dump()
     response_data["tags"] = [TagRead.model_validate(t).model_dump() for t in updated.tags]
@@ -709,6 +735,7 @@ def get_article_revision_endpoint(article_id: UUID, version_number: int, session
 def restore_article_revision_endpoint(
     article_id: UUID,
     version_number: int,
+    background_tasks: BackgroundTasks,
     user=Depends(require_role(["admin", "editor", "contributor"])),
     session: Session = Depends(get_session),
 ):
@@ -718,6 +745,7 @@ def restore_article_revision_endpoint(
     restored = restore_revision(session, article, version_number, author_id=user.id)
     if not restored:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+    background_tasks.add_task(clear_article_caches)
     response = restored.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in restored.tags]
     return response
@@ -726,6 +754,7 @@ def restore_article_revision_endpoint(
 def reassign_article_endpoint(
     article_id: UUID,
     data: ArticleReassignRequest,
+    background_tasks: BackgroundTasks,
     user=Depends(require_role(["admin"])),
     session: Session = Depends(get_session),
 ):
@@ -743,6 +772,7 @@ def reassign_article_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+    background_tasks.add_task(clear_article_caches)
     response = updated.model_dump()
     response["tags"] = [TagRead.model_validate(t).model_dump() for t in updated.tags]
     if updated.author:

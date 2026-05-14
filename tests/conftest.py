@@ -7,6 +7,15 @@ from app.main import app
 from app.database import get_session
 from app.services.seed_service import seed_default_admin
 
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
+
+@pytest.fixture(autouse=True)
+def setup_cache():
+    FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
+    yield
+    # No clear method on InMemoryBackend or no await needed
+
 @pytest.fixture(name="arq_pool")
 def arq_pool_fixture():
     mock = AsyncMock()

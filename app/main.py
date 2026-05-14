@@ -1,3 +1,6 @@
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+import redis.asyncio as aioredis
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,10 +30,19 @@ async def lifespan(app: FastAPI):
     # Initialize arq pool
     app.state.arq_pool = await create_pool(get_redis_settings())
     
+    # Initialize fastapi-cache
+    redis_client = aioredis.from_url(settings.REDIS_URL, encoding="utf8")
+    FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
+    app.state.redis_client = redis_client
+    
     yield
     
     # Shutdown
     await app.state.arq_pool.close()
+    if hasattr(app.state.redis_client, "aclose"):
+        await app.state.redis_client.aclose()
+    else:
+        await app.state.redis_client.close()
 
 app = FastAPI(title="Blog + Newsletter Platform", version="0.1.0", lifespan=lifespan)
 
