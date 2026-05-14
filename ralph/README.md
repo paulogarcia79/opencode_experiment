@@ -42,7 +42,7 @@ issues/
 2. `once.sh` reads all issues + recent git commits + `prompt.md`, then invokes `opencode run` with the full context
 3. The AI agent:
    - Parses issues and picks the next AFK task
-   - Explores the repo (reads AGENTS.md, openspec config)
+   - Explores the repo (reads AGENTS.md)
    - Implements using strict TDD (pytest for backend, vitest for frontend)
    - Runs feedback loops (`pytest`, `npm run test`, `npm run typecheck`)
    - Commits with descriptive messages
